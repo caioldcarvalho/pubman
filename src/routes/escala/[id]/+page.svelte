@@ -51,28 +51,24 @@
 
 	{#if tab === 'availability'}
 		<div class="px-4 py-4">
-			<p class="mb-4 text-sm text-text-muted">Toque no nome para alternar disponibilidade.</p>
+			<p class="mb-4 text-sm text-text-muted">Toque nas datas para alternar disponibilidade.</p>
 
 			<div class="stagger space-y-5">
-				{#each dates as schedDate}
-					<div>
-						<div class="mb-2 flex items-center gap-2">
-							<span class="rounded-lg bg-surface-2 px-2 py-1 text-xs font-bold {schedDate.day_of_week === 6 ? 'bg-accent/20 text-accent' : ''}">
-								{dayLabels[schedDate.day_of_week] ?? getDayName(schedDate.date)}
-							</span>
-							<span class="text-sm font-semibold">{formatDate(schedDate.date)}</span>
-							<span class="text-xs text-text-muted">({schedDate.required_count} necessários)</span>
-						</div>
-						<div class="grid grid-cols-2 gap-1.5">
-							{#each collaborators.active as collab}
+				{#each collaborators.active as collab}
+					<div class="rounded-2xl bg-surface p-4 shadow-md shadow-black/10">
+						<div class="mb-3 text-sm font-semibold">{collab.name}</div>
+						<div class="flex flex-wrap gap-1.5">
+							{#each dates as schedDate}
 								{@const avail = schedule.getAvailability(schedDate.id).find((a) => a.collaborator_id === collab.id)}
 								{@const isAvailable = avail?.available ?? false}
 								<button
 									onclick={() => toggleAvail(schedDate.id, collab.id, isAvailable)}
-									class="pressable rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all
-										{isAvailable ? 'bg-success/15 text-success ring-1 ring-success/30' : 'bg-surface text-text-muted'}"
+									class="pressable rounded-lg px-3 py-2 text-xs font-medium transition-all
+										{isAvailable ? 'bg-success/15 text-success ring-1 ring-success/30' : 'bg-surface-2 text-text-muted'}
+										{schedDate.day_of_week === 6 ? 'ring-1 ring-accent/20' : ''}"
 								>
-									{collab.name}
+									<span class="block text-[10px] uppercase opacity-70">{dayLabels[schedDate.day_of_week] ?? getDayName(schedDate.date)}</span>
+									<span>{formatDate(schedDate.date)}</span>
 								</button>
 							{/each}
 						</div>
