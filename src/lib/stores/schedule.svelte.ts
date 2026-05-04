@@ -149,7 +149,7 @@ class ScheduleStore {
 		}
 	}
 
-	async addPeriod(startDate: string, endDate: string): Promise<string> {
+	async addPeriod(startDate: string, endDate: string, extraDates: string[] = []): Promise<string> {
 		const { data: period } = await supabase
 			.from('schedule_periods')
 			.insert({ start_date: startDate, end_date: endDate })
@@ -161,16 +161,32 @@ class ScheduleStore {
 
 		// Generate weekend dates
 		const newDates: Omit<ScheduleDate, 'id'>[] = [];
+		const generatedDateStrs = new Set<string>();
 		const start = new Date(startDate + 'T12:00:00');
 		const end = new Date(endDate + 'T12:00:00');
 		for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
 			const dow = d.getDay();
 			if (dow === 5 || dow === 6) {
+				const dateStr = d.toISOString().split('T')[0];
+				generatedDateStrs.add(dateStr);
 				newDates.push({
 					period_id: period.id,
-					date: d.toISOString().split('T')[0],
+					date: dateStr,
 					day_of_week: dow,
-					required_count: dow === 6 ? 5 : 3,
+					required_count: dow === 6 ? 3 : 1,
+				});
+			}
+		}
+
+		// Add extra dates (events, special days)
+		for (const dateStr of extraDates) {
+			if (!generatedDateStrs.has(dateStr)) {
+				const d = new Date(dateStr + 'T12:00:00');
+				newDates.push({
+					period_id: period.id,
+					date: dateStr,
+					day_of_week: d.getDay(),
+					required_count: 1,
 				});
 			}
 		}
@@ -181,6 +197,77 @@ class ScheduleStore {
 		}
 
 		return period.id;
+	}
+
+	getPastAssignments(collaboratorId: string, today: string): Assignment[] {
+		return this.assignments.filter((a) => {
+			if (a.collaborator_id !== collaboratorId) return false;
+			const schedDate = this._dateById.get(a.date_id);
+			return schedDate && schedDate.date <= today;
+		});
+	}
+
+	async deletePeriod(periodId: string) {
+		await supabase.from('schedule_periods').delete().eq('id', periodId);
+		const dateIds = new Set(this.dates.filter((d) => d.period_id === periodId).map((d) => d.id));
+		this.periods = this.periods.filter((p) => p.id !== periodId);
+		this.dates = this.dates.filter((d) => d.period_id !== periodId);
+		this.availability = this.availability.filter((a) => !dateIds.has(a.date_id));
+		this.assignments = this.assignments.filter((a) => !dateIds.has(a.date_id));
+	}
+
+	async updatePeriod(periodId: string, startDate: string, endDate: string, extraDates: string[] = []) {
+		await supabase.from('schedule_periods').update({ start_date: startDate, end_date: endDate }).eq('id', periodId);
+
+		// Delete old dates (cascade clears availability/assignments in DB)
+		const oldDateIds = this.dates.filter((d) => d.period_id === periodId).map((d) => d.id);
+		if (oldDateIds.length) {
+			await supabase.from('schedule_dates').delete().in('id', oldDateIds);
+		}
+
+		// Regenerate dates
+		const newDates: Omit<ScheduleDate, 'id'>[] = [];
+		const generatedDateStrs = new Set<string>();
+		const start = new Date(startDate + 'T12:00:00');
+		const end = new Date(endDate + 'T12:00:00');
+		for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+			const dow = d.getDay();
+			if (dow === 5 || dow === 6) {
+				const dateStr = d.toISOString().split('T')[0];
+				generatedDateStrs.add(dateStr);
+				newDates.push({
+					period_id: periodId,
+					date: dateStr,
+					day_of_week: dow,
+					required_count: dow === 6 ? 3 : 1,
+				});
+			}
+		}
+
+		for (const dateStr of extraDates) {
+			if (!generatedDateStrs.has(dateStr)) {
+				const d = new Date(dateStr + 'T12:00:00');
+				newDates.push({
+					period_id: periodId,
+					date: dateStr,
+					day_of_week: d.getDay(),
+					required_count: 1,
+				});
+			}
+		}
+
+		// Update local state
+		const period = this.periods.find((p) => p.id === periodId);
+		if (period) { period.start_date = startDate; period.end_date = endDate; }
+		const oldSet = new Set(oldDateIds);
+		this.dates = this.dates.filter((d) => !oldSet.has(d.id));
+		this.availability = this.availability.filter((a) => !oldSet.has(a.date_id));
+		this.assignments = this.assignments.filter((a) => !oldSet.has(a.date_id));
+
+		if (newDates.length > 0) {
+			const { data: insertedDates } = await supabase.from('schedule_dates').insert(newDates).select();
+			if (insertedDates) this.dates.push(...insertedDates);
+		}
 	}
 
 	async updateAssignmentRate(assignmentId: string, rateOverride: number | null) {

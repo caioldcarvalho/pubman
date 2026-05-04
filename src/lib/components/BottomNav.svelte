@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 
 	const tabs = [
-		{ href: '/hoje', label: 'Hoje', icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM12 6v6l4 2' },
+		{ href: '/hoje', label: 'Noite', icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM12 6v6l4 2' },
 		{ href: '/escala', label: 'Escala', icon: 'M6 2v2M18 2v2M3 8h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z' },
 		{ href: '/consumo', label: 'Consumo', icon: 'M3 2l0 6c0 1.7 1.3 3 3 3h1v9h2V11h1c1.7 0 3-1.3 3-3V2M19 2v8a4 4 0 01-4 4h-1v8h-2' },
 		{ href: '/pagamentos', label: 'Pagar', icon: 'M21 12V7H5a2 2 0 010-4h14v4M3 5v14a2 2 0 002 2h16v-5M18 14a1 1 0 100 2 1 1 0 000-2z' },

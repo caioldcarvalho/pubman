@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import StarRating from '$lib/components/StarRating.svelte';
 	import { collaborators } from '$lib/stores/collaborators.svelte';
@@ -12,6 +13,10 @@
 	const assignmentCounts = $derived(period ? schedule.getAssignmentCountByCollaborator(period.id) : new Map());
 
 	let tab = $state<'availability' | 'schedule'>('availability');
+	let showDeleteConfirm = $state(false);
+	let editing = $state(false);
+	let editStart = $state('');
+	let editEnd = $state('');
 
 	const dayLabels: Record<number, string> = { 5: 'Sex', 6: 'Sáb' };
 
@@ -27,10 +32,66 @@
 			toast.success(`${name} escalado`);
 		}
 	}
+
+	function startEdit() {
+		if (!period) return;
+		editStart = period.start_date;
+		editEnd = period.end_date;
+		editing = true;
+	}
+
+	async function saveEdit() {
+		if (!period || !editStart || !editEnd) return;
+		await schedule.updatePeriod(period.id, editStart, editEnd);
+		toast.success('Escala atualizada');
+		editing = false;
+	}
+
+	async function deletePeriod() {
+		if (!period) return;
+		await schedule.deletePeriod(period.id);
+		toast.info('Escala excluída');
+		goto('/escala');
+	}
 </script>
 
 {#if period}
-	<PageHeader title="{formatDate(period.start_date)} - {formatDate(period.end_date)}" backHref="/escala" />
+	<PageHeader title="{formatDate(period.start_date)} - {formatDate(period.end_date)}" backHref="/escala">
+		<div class="flex gap-2">
+			<button onclick={startEdit} class="rounded-xl bg-surface-2 px-3 py-1.5 text-sm font-medium text-text-muted transition-all active:scale-95">
+				Editar
+			</button>
+			<button onclick={() => (showDeleteConfirm = true)} class="rounded-xl bg-accent/15 px-3 py-1.5 text-sm font-medium text-accent transition-all active:scale-95">
+				Excluir
+			</button>
+		</div>
+	</PageHeader>
+
+	<!-- Delete confirmation -->
+	{#if showDeleteConfirm}
+		<div class="mx-4 mb-4 animate-in rounded-2xl bg-accent/10 p-4 ring-1 ring-accent/20">
+			<p class="mb-3 text-sm font-medium">Excluir esta escala? Todas as disponibilidades e escalações serão perdidas.</p>
+			<div class="flex gap-2">
+				<button onclick={deletePeriod} class="flex-1 rounded-xl bg-accent py-2.5 text-sm font-semibold text-white">Confirmar</button>
+				<button onclick={() => (showDeleteConfirm = false)} class="flex-1 rounded-xl bg-surface-2 py-2.5 text-sm font-medium text-text-muted">Cancelar</button>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Edit period dates -->
+	{#if editing}
+		<div class="mx-4 mb-4 animate-in rounded-2xl bg-surface p-4 shadow-lg shadow-black/20 ring-1 ring-accent/20">
+			<p class="mb-3 text-sm font-medium">Editar período <span class="text-xs text-text-muted">(disponibilidades e escalações serão resetadas)</span></p>
+			<label class="mb-1 block text-xs text-text-muted">Início</label>
+			<input bind:value={editStart} type="date" class="mb-3 w-full rounded-xl bg-surface-2 px-3 py-2 text-sm text-text outline-none focus:ring-2 focus:ring-accent/50" />
+			<label class="mb-1 block text-xs text-text-muted">Fim</label>
+			<input bind:value={editEnd} type="date" class="mb-3 w-full rounded-xl bg-surface-2 px-3 py-2 text-sm text-text outline-none focus:ring-2 focus:ring-accent/50" />
+			<div class="flex gap-2">
+				<button onclick={saveEdit} disabled={!editStart || !editEnd} class="flex-1 rounded-xl bg-accent py-2.5 text-sm font-semibold text-white disabled:opacity-50">Salvar</button>
+				<button onclick={() => (editing = false)} class="flex-1 rounded-xl bg-surface-2 py-2.5 text-sm font-medium text-text-muted">Cancelar</button>
+			</div>
+		</div>
+	{/if}
 
 	<div class="flex border-b border-surface-2">
 		<button
@@ -54,7 +115,7 @@
 			<p class="mb-4 text-sm text-text-muted">Toque nas datas para alternar disponibilidade.</p>
 
 			<div class="stagger space-y-5">
-				{#each collaborators.active as collab}
+				{#each collaborators.salaoFreelancers as collab}
 					<div class="rounded-2xl bg-surface p-4 shadow-md shadow-black/10">
 						<div class="mb-3 text-sm font-semibold">{collab.name}</div>
 						<div class="flex flex-wrap gap-1.5">
@@ -83,7 +144,7 @@
 			<div class="animate-in mb-5 rounded-2xl bg-surface p-4 shadow-md shadow-black/10">
 				<div class="mb-2 text-[10px] font-bold uppercase tracking-wider text-text-muted">Dias convocados</div>
 				<div class="flex flex-wrap gap-1.5">
-					{#each collaborators.sorted as collab}
+					{#each collaborators.salaoFreelancers as collab}
 						{@const count = assignmentCounts.get(collab.id) ?? 0}
 						<div class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium
 							{count > 0 ? 'bg-accent/15 text-accent ring-1 ring-accent/30' : 'bg-surface-2 text-text-muted'}">
@@ -113,7 +174,7 @@
 							<p class="rounded-xl bg-surface px-4 py-3 text-center text-xs text-text-muted">Ninguém disponível</p>
 						{:else}
 							<div class="grid grid-cols-2 gap-1.5">
-								{#each collaborators.sorted as collab}
+								{#each collaborators.salaoFreelancers as collab}
 									{@const isAvail = available.some((a) => a.collaborator_id === collab.id)}
 									{@const isAssigned = schedule.isAssigned(schedDate.id, collab.id)}
 									{#if isAvail}

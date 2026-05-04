@@ -9,7 +9,7 @@
 
 	let showAdd = $state(false);
 	let newName = $state('');
-	let newRole = $state<'ambos' | 'instrutor' | 'garcom'>('ambos');
+	let newRole = $state<'ambos' | 'instrutor' | 'garcom' | 'bar' | 'cozinha'>('ambos');
 	let newRate = $state(80);
 	let newFixed = $state(false);
 
@@ -21,7 +21,7 @@
 		showAdd = false;
 	}
 
-	const roleLabels: Record<string, string> = { instrutor: 'Instrutor', garcom: 'Garçom', ambos: 'Ambos' };
+	const roleLabels: Record<string, string> = { instrutor: 'Instrutor', garcom: 'Garçom', ambos: 'Ambos', bar: 'Bar', cozinha: 'Cozinha' };
 </script>
 
 <PageHeader title="Colaboradores">
@@ -41,7 +41,7 @@
 			class="mb-3 w-full rounded-xl bg-surface-2 px-4 py-2.5 text-text outline-none transition-shadow focus:ring-2 focus:ring-accent/50"
 		/>
 		<div class="mb-3 flex gap-2">
-			{#each (['ambos', 'instrutor', 'garcom'] as const) as role}
+			{#each (['ambos', 'instrutor', 'garcom', 'bar', 'cozinha'] as const) as role}
 				<button
 					type="button"
 					onclick={() => (newRole = role)}

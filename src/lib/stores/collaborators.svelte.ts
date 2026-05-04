@@ -3,7 +3,7 @@ import { supabase } from '$lib/supabase';
 export interface Collaborator {
 	id: string;
 	name: string;
-	role: 'instrutor' | 'garcom' | 'ambos';
+	role: 'instrutor' | 'garcom' | 'ambos' | 'bar' | 'cozinha';
 	base_rate: number;
 	stars: number;
 	active: boolean;
@@ -27,6 +27,14 @@ class CollaboratorStore {
 
 	get fixedStaff() {
 		return this.active.filter((c) => c.fixed);
+	}
+
+	get salaoStaff() {
+		return this.active.filter((c) => c.role === 'instrutor' || c.role === 'garcom' || c.role === 'ambos');
+	}
+
+	get salaoFreelancers() {
+		return this.salaoStaff.filter((c) => !c.fixed);
 	}
 
 	get sorted() {

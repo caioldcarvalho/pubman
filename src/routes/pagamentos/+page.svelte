@@ -4,11 +4,11 @@
 	import { consumption } from '$lib/stores/consumption.svelte';
 	import { schedule } from '$lib/stores/schedule.svelte';
 	import { products } from '$lib/stores/products.svelte';
-	import { formatCurrency } from '$lib/utils';
+	import { formatCurrency, todayISO } from '$lib/utils';
 
 	const report = $derived(
 		collaborators.active.map((collab) => {
-			const assignments = schedule.assignments.filter((a) => a.collaborator_id === collab.id);
+			const assignments = schedule.getPastAssignments(collab.id, todayISO());
 			const daysWorked = assignments.length;
 			const earned = assignments.reduce((sum, a) => sum + (a.rate_override ?? collab.base_rate), 0);
 			const consumed = consumption.totalByCollaborator(collab.id, (pid) => products.getPrice(pid));

@@ -7,12 +7,12 @@
 	import { schedule } from '$lib/stores/schedule.svelte';
 	import { products } from '$lib/stores/products.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
-	import { formatCurrency, formatDate, getDayName } from '$lib/utils';
+	import { formatCurrency, formatDate, getDayName, todayISO } from '$lib/utils';
 
 	const collab = $derived(collaborators.getById(page.params.id));
 
 	const assignments = $derived(
-		collab ? schedule.assignments.filter((a) => a.collaborator_id === collab.id) : []
+		collab ? schedule.getPastAssignments(collab.id, todayISO()) : []
 	);
 
 	const entries = $derived(collab ? consumption.getByCollaborator(collab.id) : []);

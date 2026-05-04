@@ -39,7 +39,7 @@
 		await collaborators.setStars(collab.id, v);
 	}
 
-	const roleLabels: Record<string, string> = { instrutor: 'Instrutor', garcom: 'Garçom', ambos: 'Ambos' };
+	const roleLabels: Record<string, string> = { instrutor: 'Instrutor', garcom: 'Garçom', ambos: 'Ambos', bar: 'Bar', cozinha: 'Cozinha' };
 </script>
 
 {#if collab}
