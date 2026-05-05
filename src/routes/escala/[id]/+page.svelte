@@ -13,12 +13,20 @@
 	const assignmentCounts = $derived(period ? schedule.getAssignmentCountByCollaborator(period.id) : new Map());
 
 	let tab = $state<'availability' | 'schedule'>('availability');
+	let area = $state<'salao' | 'cozinha'>('salao');
 	let showDeleteConfirm = $state(false);
 	let editing = $state(false);
 	let editStart = $state('');
 	let editEnd = $state('');
 
 	const dayLabels: Record<number, string> = { 5: 'Sex', 6: 'Sáb' };
+
+	// Staff filtered by area
+	const areaFreelancers = $derived(
+		area === 'salao' ? collaborators.salaoFreelancers : collaborators.cozinhaFreelancers
+	);
+
+	const hasCozinha = $derived(collaborators.cozinhaStaff.length > 0);
 
 	async function toggleAvail(dateId: string, collabId: string, current: boolean) {
 		await schedule.setAvailability(dateId, collabId, !current);
@@ -53,11 +61,43 @@
 		toast.info('Escala excluída');
 		goto('/escala');
 	}
+
+	function exportSchedule() {
+		if (!dates.length) return;
+
+		const lines: string[] = [];
+		let lastDate = '';
+
+		for (const d of dates) {
+			const assigned = schedule.getAssignments(d.id);
+			const names = assigned
+				.map((a) => collaborators.getById(a.collaborator_id)?.name)
+				.filter(Boolean);
+
+			// Add blank line if there's a gap of more than 2 days from last date
+			if (lastDate) {
+				const prev = new Date(lastDate + 'T12:00:00');
+				const curr = new Date(d.date + 'T12:00:00');
+				const diffDays = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
+				if (diffDays > 2) lines.push('');
+			}
+
+			const dateStr = formatDate(d.date);
+			lines.push(names.length > 0 ? `${dateStr} - ${names.join(', ')}` : `${dateStr} - (vazio)`);
+			lastDate = d.date;
+		}
+
+		navigator.clipboard.writeText(lines.join('\n'));
+		toast.success('Escala copiada!');
+	}
 </script>
 
 {#if period}
 	<PageHeader title="{formatDate(period.start_date)} - {formatDate(period.end_date)}" backHref="/escala">
 		<div class="flex gap-2">
+			<button onclick={exportSchedule} class="rounded-xl bg-surface-2 px-3 py-1.5 text-sm font-medium text-text-muted transition-all active:scale-95" title="Copiar escala">
+				<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-2M16 3h5v5M10 14L20.2 3.8" /></svg>
+			</button>
 			<button onclick={startEdit} class="rounded-xl bg-surface-2 px-3 py-1.5 text-sm font-medium text-text-muted transition-all active:scale-95">
 				Editar
 			</button>
@@ -93,6 +133,26 @@
 		</div>
 	{/if}
 
+	<!-- Area toggle (only if there's cozinha staff) -->
+	{#if hasCozinha}
+		<div class="flex gap-2 px-4 pt-3">
+			<button
+				onclick={() => (area = 'salao')}
+				class="rounded-xl px-3 py-1.5 text-xs font-medium transition-all
+					{area === 'salao' ? 'bg-accent text-white shadow-md shadow-accent/20' : 'bg-surface-2 text-text-muted'}"
+			>
+				Salão
+			</button>
+			<button
+				onclick={() => (area = 'cozinha')}
+				class="rounded-xl px-3 py-1.5 text-xs font-medium transition-all
+					{area === 'cozinha' ? 'bg-accent text-white shadow-md shadow-accent/20' : 'bg-surface-2 text-text-muted'}"
+			>
+				Cozinha
+			</button>
+		</div>
+	{/if}
+
 	<div class="flex border-b border-surface-2">
 		<button
 			onclick={() => (tab = 'availability')}
@@ -114,46 +174,52 @@
 		<div class="px-4 py-4">
 			<p class="mb-4 text-sm text-text-muted">Toque nas datas para alternar disponibilidade.</p>
 
-			<div class="stagger space-y-5">
-				{#each collaborators.salaoFreelancers as collab}
-					<div class="rounded-2xl bg-surface p-4 shadow-md shadow-black/10">
-						<div class="mb-3 text-sm font-semibold">{collab.name}</div>
-						<div class="flex flex-wrap gap-1.5">
-							{#each dates as schedDate}
-								{@const avail = schedule.getAvailability(schedDate.id).find((a) => a.collaborator_id === collab.id)}
-								{@const isAvailable = avail?.available ?? false}
-								<button
-									onclick={() => toggleAvail(schedDate.id, collab.id, isAvailable)}
-									class="pressable rounded-lg px-3 py-2 text-xs font-medium transition-all
-										{isAvailable ? 'bg-success/15 text-success ring-1 ring-success/30' : 'bg-surface-2 text-text-muted'}
-										{schedDate.day_of_week === 6 ? 'ring-1 ring-accent/20' : ''}"
-								>
-									<span class="block text-[10px] uppercase opacity-70">{dayLabels[schedDate.day_of_week] ?? getDayName(schedDate.date)}</span>
-									<span>{formatDate(schedDate.date)}</span>
-								</button>
-							{/each}
+			{#if areaFreelancers.length === 0}
+				<p class="py-8 text-center text-sm text-text-muted">Nenhum colaborador de {area === 'salao' ? 'salão' : 'cozinha'} cadastrado.</p>
+			{:else}
+				<div class="stagger space-y-5">
+					{#each areaFreelancers as collab}
+						<div class="rounded-2xl bg-surface p-4 shadow-md shadow-black/10">
+							<div class="mb-3 text-sm font-semibold">{collab.name}</div>
+							<div class="flex flex-wrap gap-1.5">
+								{#each dates as schedDate}
+									{@const avail = schedule.getAvailability(schedDate.id).find((a) => a.collaborator_id === collab.id)}
+									{@const isAvailable = avail?.available ?? false}
+									<button
+										onclick={() => toggleAvail(schedDate.id, collab.id, isAvailable)}
+										class="pressable rounded-lg px-3 py-2 text-xs font-medium transition-all
+											{isAvailable ? 'bg-success/15 text-success ring-1 ring-success/30' : 'bg-surface-2 text-text-muted'}
+											{schedDate.day_of_week === 6 ? 'ring-1 ring-accent/20' : ''}"
+									>
+										<span class="block text-[10px] uppercase opacity-70">{dayLabels[schedDate.day_of_week] ?? getDayName(schedDate.date)}</span>
+										<span>{formatDate(schedDate.date)}</span>
+									</button>
+								{/each}
+							</div>
 						</div>
-					</div>
-				{/each}
-			</div>
+					{/each}
+				</div>
+			{/if}
 		</div>
 
 	{:else}
 		<div class="px-4 py-4">
 			<!-- Assignment counts -->
-			<div class="animate-in mb-5 rounded-2xl bg-surface p-4 shadow-md shadow-black/10">
-				<div class="mb-2 text-[10px] font-bold uppercase tracking-wider text-text-muted">Dias convocados</div>
-				<div class="flex flex-wrap gap-1.5">
-					{#each collaborators.salaoFreelancers as collab}
-						{@const count = assignmentCounts.get(collab.id) ?? 0}
-						<div class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium
-							{count > 0 ? 'bg-accent/15 text-accent ring-1 ring-accent/30' : 'bg-surface-2 text-text-muted'}">
-							<span>{collab.name}</span>
-							<span class="font-bold">{count}</span>
-						</div>
-					{/each}
+			{#if areaFreelancers.length > 0}
+				<div class="animate-in mb-5 rounded-2xl bg-surface p-4 shadow-md shadow-black/10">
+					<div class="mb-2 text-[10px] font-bold uppercase tracking-wider text-text-muted">Dias convocados</div>
+					<div class="flex flex-wrap gap-1.5">
+						{#each areaFreelancers as collab}
+							{@const count = assignmentCounts.get(collab.id) ?? 0}
+							<div class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium
+								{count > 0 ? 'bg-accent/15 text-accent ring-1 ring-accent/30' : 'bg-surface-2 text-text-muted'}">
+								<span>{collab.name}</span>
+								<span class="font-bold">{count}</span>
+							</div>
+						{/each}
+					</div>
 				</div>
-			</div>
+			{/if}
 
 			<div class="stagger space-y-5">
 				{#each dates as schedDate}
@@ -170,11 +236,11 @@
 								{assigned.length}/{schedDate.required_count}
 							</span>
 						</div>
-						{#if available.length === 0}
+						{#if available.filter((a) => areaFreelancers.some((c) => c.id === a.collaborator_id)).length === 0}
 							<p class="rounded-xl bg-surface px-4 py-3 text-center text-xs text-text-muted">Ninguém disponível</p>
 						{:else}
 							<div class="grid grid-cols-2 gap-1.5">
-								{#each collaborators.salaoFreelancers as collab}
+								{#each areaFreelancers as collab}
 									{@const isAvail = available.some((a) => a.collaborator_id === collab.id)}
 									{@const isAssigned = schedule.isAssigned(schedDate.id, collab.id)}
 									{#if isAvail}

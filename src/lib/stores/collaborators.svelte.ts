@@ -48,6 +48,22 @@ class CollaboratorStore {
 		return this.salaoStaff.filter((c) => !c.fixed);
 	}
 
+	get cozinhaStaff() {
+		return this.active.filter((c) => c.roles.includes('cozinha'));
+	}
+
+	get cozinhaFreelancers() {
+		return this.cozinhaStaff.filter((c) => !c.fixed);
+	}
+
+	get barStaff() {
+		return this.active.filter((c) => c.roles.includes('bar'));
+	}
+
+	get barFreelancers() {
+		return this.barStaff.filter((c) => !c.fixed);
+	}
+
 	get sorted() {
 		return [...this.active].sort((a, b) => b.stars - a.stars);
 	}
