@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import StarRating from '$lib/components/StarRating.svelte';
-	import { collaborators } from '$lib/stores/collaborators.svelte';
+	import { collaborators, ALL_ROLES, type Role } from '$lib/stores/collaborators.svelte';
 	import { consumption } from '$lib/stores/consumption.svelte';
 	import { products } from '$lib/stores/products.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
@@ -39,7 +39,14 @@
 		await collaborators.setStars(collab.id, v);
 	}
 
-	const roleLabels: Record<string, string> = { instrutor: 'Instrutor', garcom: 'Garçom', ambos: 'Ambos', bar: 'Bar', cozinha: 'Cozinha' };
+	async function toggleRole(role: Role) {
+		if (!collab) return;
+		const has = collab.roles.includes(role);
+		const newRoles = has ? collab.roles.filter((r) => r !== role) : [...collab.roles, role];
+		if (newRoles.length === 0) return; // must have at least one
+		await collaborators.update(collab.id, { roles: newRoles });
+		toast.success(`Funções atualizadas`);
+	}
 </script>
 
 {#if collab}
@@ -48,21 +55,35 @@
 	<div class="px-4 py-4">
 		<div class="animate-in mb-4 rounded-2xl bg-surface p-5 shadow-lg shadow-black/20">
 			<div class="mb-4 flex items-center justify-between">
-				<div class="flex items-center gap-2">
-					<span class="rounded-lg bg-surface-2 px-2.5 py-1 text-xs font-medium text-text-muted">{roleLabels[collab.role]}</span>
-					<button
-						onclick={async () => { await collaborators.update(collab.id, { fixed: !collab.fixed }); toast.success(collab.fixed ? 'Agora é freela' : 'Agora é fixo'); }}
-						class="rounded-lg px-2.5 py-1 text-xs font-bold transition-all
-							{collab.fixed ? 'bg-info/20 text-info ring-1 ring-info/30' : 'bg-surface-2 text-text-muted'}"
-					>
-						{collab.fixed ? 'FIXO' : 'FREELA'}
-					</button>
-				</div>
+				<button
+					onclick={async () => { await collaborators.update(collab.id, { fixed: !collab.fixed }); toast.success(collab.fixed ? 'Agora é freela' : 'Agora é fixo'); }}
+					class="rounded-lg px-2.5 py-1 text-xs font-bold transition-all
+						{collab.fixed ? 'bg-info/20 text-info ring-1 ring-info/30' : 'bg-surface-2 text-text-muted'}"
+				>
+					{collab.fixed ? 'FIXO' : 'FREELA'}
+				</button>
 				<StarRating
 					value={collab.stars}
 					size="lg"
 					onchange={handleStars}
 				/>
+			</div>
+
+			<!-- Role tags -->
+			<div class="mb-4">
+				<div class="mb-2 text-[10px] font-bold uppercase tracking-wider text-text-muted">Funções</div>
+				<div class="flex flex-wrap gap-1.5">
+					{#each ALL_ROLES as { value, label }}
+						{@const active = collab.roles.includes(value)}
+						<button
+							onclick={() => toggleRole(value)}
+							class="rounded-lg px-3 py-1.5 text-xs font-medium transition-all
+								{active ? 'bg-accent text-white shadow-md shadow-accent/20' : 'bg-surface-2 text-text-muted'}"
+						>
+							{label}
+						</button>
+					{/each}
+				</div>
 			</div>
 
 			<div class="flex items-center justify-between">

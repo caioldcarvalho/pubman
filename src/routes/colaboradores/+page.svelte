@@ -1,7 +1,7 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import StarRating from '$lib/components/StarRating.svelte';
-	import { collaborators } from '$lib/stores/collaborators.svelte';
+	import { collaborators, ALL_ROLES, type Role } from '$lib/stores/collaborators.svelte';
 	import { consumption } from '$lib/stores/consumption.svelte';
 	import { products } from '$lib/stores/products.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
@@ -9,19 +9,26 @@
 
 	let showAdd = $state(false);
 	let newName = $state('');
-	let newRole = $state<'ambos' | 'instrutor' | 'garcom' | 'bar' | 'cozinha'>('ambos');
+	let newRoles = $state<Role[]>([]);
 	let newRate = $state(80);
 	let newFixed = $state(false);
 
-	async function addCollaborator() {
-		if (!newName.trim()) return;
-		await collaborators.add({ name: newName.trim(), role: newRole, base_rate: newRate, stars: 3, active: true, fixed: newFixed });
-		toast.success(`${newName.trim()} adicionado`);
-		newName = '';
-		showAdd = false;
+	function toggleRole(role: Role) {
+		if (newRoles.includes(role)) {
+			newRoles = newRoles.filter((r) => r !== role);
+		} else {
+			newRoles = [...newRoles, role];
+		}
 	}
 
-	const roleLabels: Record<string, string> = { instrutor: 'Instrutor', garcom: 'Garçom', ambos: 'Ambos', bar: 'Bar', cozinha: 'Cozinha' };
+	async function addCollaborator() {
+		if (!newName.trim() || newRoles.length === 0) return;
+		await collaborators.add({ name: newName.trim(), roles: newRoles, base_rate: newRate, stars: 3, active: true, fixed: newFixed });
+		toast.success(`${newName.trim()} adicionado`);
+		newName = '';
+		newRoles = [];
+		showAdd = false;
+	}
 </script>
 
 <PageHeader title="Colaboradores">
@@ -40,15 +47,15 @@
 			placeholder="Nome"
 			class="mb-3 w-full rounded-xl bg-surface-2 px-4 py-2.5 text-text outline-none transition-shadow focus:ring-2 focus:ring-accent/50"
 		/>
-		<div class="mb-3 flex gap-2">
-			{#each (['ambos', 'instrutor', 'garcom', 'bar', 'cozinha'] as const) as role}
+		<div class="mb-3 flex flex-wrap gap-2">
+			{#each ALL_ROLES as { value, label }}
 				<button
 					type="button"
-					onclick={() => (newRole = role)}
-					class="flex-1 rounded-xl px-3 py-2.5 text-sm font-medium transition-all
-						{newRole === role ? 'bg-accent text-white shadow-md shadow-accent/20' : 'bg-surface-2 text-text-muted'}"
+					onclick={() => toggleRole(value)}
+					class="rounded-xl px-3 py-2.5 text-sm font-medium transition-all
+						{newRoles.includes(value) ? 'bg-accent text-white shadow-md shadow-accent/20' : 'bg-surface-2 text-text-muted'}"
 				>
-					{roleLabels[role]}
+					{label}
 				</button>
 			{/each}
 		</div>
@@ -70,7 +77,7 @@
 				{newFixed ? 'Fixo' : 'Freela'}
 			</button>
 		</div>
-		<button type="submit" class="w-full rounded-xl bg-accent py-2.5 font-medium text-white shadow-md shadow-accent/20 transition-all active:scale-[0.98]">
+		<button type="submit" disabled={!newName.trim() || newRoles.length === 0} class="w-full rounded-xl bg-accent py-2.5 font-medium text-white shadow-md shadow-accent/20 transition-all active:scale-[0.98] disabled:opacity-50">
 			Adicionar
 		</button>
 	</form>
@@ -87,7 +94,7 @@
 				<div class="font-medium">{collab.name}</div>
 				<div class="flex items-center gap-2">
 					<StarRating value={collab.stars} size="sm" readonly />
-					<span class="text-xs text-text-muted">{roleLabels[collab.role]}</span>
+					<span class="text-xs text-text-muted">{collab.roles.map((r) => ALL_ROLES.find((ar) => ar.value === r)?.label ?? r).join(', ')}</span>
 					{#if collab.fixed}
 						<span class="rounded bg-info/20 px-1.5 py-0.5 text-[10px] font-bold text-info">FIXO</span>
 					{/if}

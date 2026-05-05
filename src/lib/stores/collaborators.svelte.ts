@@ -1,9 +1,20 @@
 import { supabase } from '$lib/supabase';
 
+export type Role = 'instrutor' | 'garcom' | 'bar' | 'cozinha';
+
+export const ALL_ROLES: { value: Role; label: string }[] = [
+	{ value: 'instrutor', label: 'Instrutor' },
+	{ value: 'garcom', label: 'Garçom' },
+	{ value: 'bar', label: 'Bar' },
+	{ value: 'cozinha', label: 'Cozinha' },
+];
+
+const SALAO_ROLES: Role[] = ['instrutor', 'garcom'];
+
 export interface Collaborator {
 	id: string;
 	name: string;
-	role: 'instrutor' | 'garcom' | 'ambos' | 'bar' | 'cozinha';
+	roles: Role[];
 	base_rate: number;
 	stars: number;
 	active: boolean;
@@ -30,7 +41,7 @@ class CollaboratorStore {
 	}
 
 	get salaoStaff() {
-		return this.active.filter((c) => c.role === 'instrutor' || c.role === 'garcom' || c.role === 'ambos');
+		return this.active.filter((c) => c.roles.some((r) => SALAO_ROLES.includes(r)));
 	}
 
 	get salaoFreelancers() {
