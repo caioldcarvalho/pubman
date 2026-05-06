@@ -2,7 +2,6 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import PageHeader from '$lib/components/PageHeader.svelte';
-	import StarRating from '$lib/components/StarRating.svelte';
 	import { collaborators } from '$lib/stores/collaborators.svelte';
 	import { schedule } from '$lib/stores/schedule.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
@@ -11,6 +10,7 @@
 	const period = $derived(schedule.periods.find((p) => p.id === page.params.id));
 	const dates = $derived(period ? schedule.getDatesByPeriod(period.id) : []);
 	const assignmentCounts = $derived(period ? schedule.getAssignmentCountByCollaborator(period.id) : new Map());
+	const dayCounts = $derived(period ? schedule.getAssignmentCountsByDay(period.id) : new Map());
 
 	let tab = $state<'availability' | 'schedule'>('availability');
 	let area = $state<'salao' | 'cozinha'>('salao');
@@ -207,14 +207,20 @@
 			<!-- Assignment counts -->
 			{#if areaFreelancers.length > 0}
 				<div class="animate-in mb-5 rounded-2xl bg-surface p-4 shadow-md shadow-black/10">
-					<div class="mb-2 text-[10px] font-bold uppercase tracking-wider text-text-muted">Dias convocados</div>
+					<div class="mb-2 flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-text-muted">
+						<span>Dias convocados</span>
+						<span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-full bg-text-muted"></span> sex</span>
+						<span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-full bg-accent"></span> sáb</span>
+					</div>
 					<div class="flex flex-wrap gap-1.5">
 						{#each areaFreelancers as collab}
-							{@const count = assignmentCounts.get(collab.id) ?? 0}
+							{@const dc = dayCounts.get(collab.id) ?? { fri: 0, sat: 0, other: 0 }}
+							{@const total = dc.fri + dc.sat + dc.other}
 							<div class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium
-								{count > 0 ? 'bg-accent/15 text-accent ring-1 ring-accent/30' : 'bg-surface-2 text-text-muted'}">
+								{total > 0 ? 'bg-accent/15 text-accent ring-1 ring-accent/30' : 'bg-surface-2 text-text-muted'}">
 								<span>{collab.name}</span>
-								<span class="font-bold">{count}</span>
+								<span class="font-bold">{dc.fri}</span>
+								<span class="font-bold text-accent">{dc.sat}</span>
 							</div>
 						{/each}
 					</div>
@@ -243,14 +249,19 @@
 								{#each areaFreelancers as collab}
 									{@const isAvail = available.some((a) => a.collaborator_id === collab.id)}
 									{@const isAssigned = schedule.isAssigned(schedDate.id, collab.id)}
+									{@const dc = dayCounts.get(collab.id) ?? { fri: 0, sat: 0, other: 0 }}
 									{#if isAvail}
 										<button
 											onclick={() => toggleAssign(schedDate.id, collab.id)}
-											class="pressable flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-left text-sm transition-all
+											class="pressable flex flex-col items-start rounded-xl px-3 py-2 text-left transition-all
 												{isAssigned ? 'bg-accent text-white shadow-md shadow-accent/30' : 'bg-surface text-text ring-1 ring-surface-2'}"
 										>
-											<StarRating value={collab.stars} size="sm" readonly />
-											<span class="font-medium">{collab.name}</span>
+											<span class="text-sm font-medium">{collab.name}</span>
+											<div class="flex items-center gap-2 text-[10px] {isAssigned ? 'text-white/70' : 'text-text-muted'}">
+												<span title="Estrelas">★{collab.stars}</span>
+												<span title="Sextas">sex·{dc.fri}</span>
+												<span class="{isAssigned ? '' : 'text-accent'}" title="Sábados">sáb·{dc.sat}</span>
+											</div>
 										</button>
 									{/if}
 								{/each}

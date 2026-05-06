@@ -115,6 +115,22 @@ class ScheduleStore {
 		return counts;
 	}
 
+	getAssignmentCountsByDay(periodId: string): Map<string, { fri: number; sat: number; other: number }> {
+		const periodDates = this.dates.filter((d) => d.period_id === periodId);
+		const dateMap = new Map(periodDates.map((d) => [d.id, d]));
+		const counts = new Map<string, { fri: number; sat: number; other: number }>();
+		for (const a of this.assignments) {
+			const sd = dateMap.get(a.date_id);
+			if (!sd) continue;
+			const c = counts.get(a.collaborator_id) ?? { fri: 0, sat: 0, other: 0 };
+			if (sd.day_of_week === 5) c.fri++;
+			else if (sd.day_of_week === 6) c.sat++;
+			else c.other++;
+			counts.set(a.collaborator_id, c);
+		}
+		return counts;
+	}
+
 	isAssigned(dateId: string, collaboratorId: string) {
 		return this.assignments.some((a) => a.date_id === dateId && a.collaborator_id === collaboratorId);
 	}
