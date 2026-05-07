@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="108" fill="#0f0f1a"/>
+
+  <g transform="translate(256,256)" fill="none" stroke="#e94560" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Mug body (straight sides) -->
+    <path d="M-70,-130 L-70,140 Q-70,155 -55,155 L95,155 Q110,155 110,140 L110,-130 Z"/>
+
+    <!-- Handle (left side) -->
+    <path d="M-70,-85 Q-125,-75 -125,25 Q-125,115 -70,125"/>
+
+    <!-- Foam bumps -->
+    <path d="M-70,-130 Q-50,-165 -20,-130 Q10,-165 40,-130 Q70,-165 110,-130"/>
+
+    <!-- Note lines -->
+    <line x1="-30" y1="-50" x2="75" y2="-50" stroke-opacity="0.45"/>
+    <line x1="-30" y1="0" x2="75" y2="0" stroke-opacity="0.45"/>
+    <line x1="-30" y1="50" x2="75" y2="50" stroke-opacity="0.45"/>
+    <line x1="-30" y1="100" x2="75" y2="100" stroke-opacity="0.45"/>
+  </g>
+</svg>
