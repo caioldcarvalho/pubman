@@ -2,7 +2,7 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { page } from '$app/state';
 	import { collaborators } from '$lib/stores/collaborators.svelte';
-	import { consumption } from '$lib/stores/consumption.svelte';
+	import { consumption, DISCOUNT } from '$lib/stores/consumption.svelte';
 	import { products } from '$lib/stores/products.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatCurrency, todayISO } from '$lib/utils';
@@ -10,10 +10,12 @@
 	// Pre-select person from query param
 	const preselectedPerson = page.url.searchParams.get('person');
 
-	let step = $state<'person' | 'product'| 'done'>(preselectedPerson ? 'product' : 'person');
+	let step = $state<'person' | 'product' | 'custom' | 'done'>(preselectedPerson ? 'product' : 'person');
 	let selectedPerson = $state<string | null>(preselectedPerson);
 	let selectedCategory = $state<string | null>(null);
 	let lastAdded = $state<{ person: string; product: string; price: number } | null>(null);
+	let customName = $state('');
+	let customPrice = $state('');
 
 	const person = $derived(selectedPerson ? collaborators.getById(selectedPerson) : null);
 
@@ -51,8 +53,46 @@
 		}, 1200);
 	}
 
+	async function addCustomItem() {
+		const price = parseFloat(customPrice.replace(',', '.'));
+		if (!customName.trim() || !price || !selectedPerson) return;
+
+		// Store price * 1.25 so the existing 20% discount brings it back to the real value
+		const inflatedPrice = price / (1 - DISCOUNT);
+
+		await consumption.add({
+			collaborator_id: selectedPerson,
+			quantity: 1,
+			date: todayISO(),
+			custom_name: customName.trim(),
+			custom_price: inflatedPrice,
+		});
+
+		lastAdded = {
+			person: person?.name ?? '',
+			product: customName.trim(),
+			price,
+		};
+
+		toast.success(`${customName.trim()} adicionado para ${person?.name}`);
+		customName = '';
+		customPrice = '';
+
+		step = 'done';
+		setTimeout(() => {
+			step = 'person';
+			selectedPerson = null;
+			selectedCategory = null;
+			lastAdded = null;
+		}, 1200);
+	}
+
 	function reset() {
-		if (selectedCategory) {
+		if (step === 'custom') {
+			step = 'product';
+			customName = '';
+			customPrice = '';
+		} else if (selectedCategory) {
 			selectedCategory = null;
 		} else {
 			step = 'person';
@@ -65,7 +105,7 @@
 <PageHeader title="Registrar Consumo">
 	{#if step !== 'person'}
 		<button onclick={reset} class="text-sm font-medium text-accent transition-opacity active:opacity-60">
-			{selectedCategory ? 'Categorias' : 'Voltar'}
+			{step === 'custom' ? 'Voltar' : selectedCategory ? 'Categorias' : 'Voltar'}
 		</button>
 	{/if}
 </PageHeader>
@@ -100,6 +140,12 @@
 						{cat}
 					</button>
 				{/each}
+				<button
+					onclick={() => (step = 'custom')}
+					class="pressable rounded-2xl border border-dashed border-surface-3 bg-surface/50 px-4 py-4 text-center text-sm font-medium text-text-muted shadow-md shadow-black/10"
+				>
+					+ Item avulso
+				</button>
 			</div>
 		{:else}
 			<div class="stagger divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
@@ -114,6 +160,40 @@
 				{/each}
 			</div>
 		{/if}
+
+	{:else if step === 'custom'}
+		<p class="mb-3 text-sm text-text-muted">Item avulso para <strong class="text-text">{person?.name}</strong></p>
+
+		<div class="space-y-3 rounded-2xl bg-surface p-4 shadow-md shadow-black/10">
+			<div>
+				<label for="custom-name" class="mb-1 block text-xs text-text-muted">Descrição</label>
+				<input
+					id="custom-name"
+					type="text"
+					bind:value={customName}
+					placeholder="Ex: rodízio, uber, etc"
+					class="w-full rounded-xl bg-surface-2 px-4 py-3 text-sm text-text outline-none ring-1 ring-transparent focus:ring-accent/50"
+				/>
+			</div>
+			<div>
+				<label for="custom-price" class="mb-1 block text-xs text-text-muted">Valor (R$)</label>
+				<input
+					id="custom-price"
+					type="text"
+					inputmode="decimal"
+					bind:value={customPrice}
+					placeholder="0,00"
+					class="w-full rounded-xl bg-surface-2 px-4 py-3 text-sm text-text outline-none ring-1 ring-transparent focus:ring-accent/50"
+				/>
+			</div>
+			<button
+				onclick={addCustomItem}
+				disabled={!customName.trim() || !customPrice}
+				class="w-full rounded-xl bg-accent py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-40"
+			>
+				Adicionar
+			</button>
+		</div>
 
 	{:else if step === 'done'}
 		<div class="flex flex-col items-center justify-center py-16">

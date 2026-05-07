@@ -3,10 +3,12 @@ import { supabase } from '$lib/supabase';
 export interface ConsumptionEntry {
 	id: string;
 	collaborator_id: string;
-	product_id: string;
+	product_id: string | null;
 	quantity: number;
 	date: string;
 	created_at: string;
+	custom_name?: string | null;
+	custom_price?: number | null;
 }
 
 export const DISCOUNT = 0.20;
@@ -34,7 +36,8 @@ class ConsumptionStore {
 		const entries = this.getByCollaborator(collaboratorId);
 		let total = 0;
 		for (const c of entries) {
-			total += c.quantity * priceGetter(c.product_id) * (1 - DISCOUNT);
+			const price = c.custom_price ?? priceGetter(c.product_id!);
+			total += c.quantity * price * (1 - DISCOUNT);
 		}
 		return total;
 	}
@@ -48,7 +51,14 @@ class ConsumptionStore {
 		this.loaded = true;
 	}
 
-	async add(entry: { collaborator_id: string; product_id: string; quantity: number; date: string }) {
+	async add(entry: {
+		collaborator_id: string;
+		product_id?: string | null;
+		quantity: number;
+		date: string;
+		custom_name?: string;
+		custom_price?: number;
+	}) {
 		const { data } = await supabase.from('consumption').insert(entry).select().single();
 		if (data) this.list.unshift(data);
 	}
