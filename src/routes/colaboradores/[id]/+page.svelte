@@ -4,9 +4,10 @@
 	import StarRating from '$lib/components/StarRating.svelte';
 	import { collaborators, ALL_ROLES, type Role } from '$lib/stores/collaborators.svelte';
 	import { consumption } from '$lib/stores/consumption.svelte';
+	import { schedule } from '$lib/stores/schedule.svelte';
 	import { products } from '$lib/stores/products.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
-	import { formatCurrency, formatDate } from '$lib/utils';
+	import { formatCurrency, formatDate, getDayName, todayISO } from '$lib/utils';
 
 	const collab = $derived(collaborators.getById(page.params.id));
 	const entries = $derived(collab ? consumption.getByCollaborator(collab.id) : []);
@@ -20,6 +21,93 @@
 
 	let editing = $state(false);
 	let editRate = $state(0);
+
+	// Calendar: all assignments for this collaborator
+	const FULL_SHIFT_HOURS = 6;
+	const allAssignments = $derived(
+		collab
+			? schedule.assignments
+					.filter((a) => a.collaborator_id === collab.id)
+					.map((a) => {
+						const sd = schedule.getDateById(a.date_id);
+						return { ...a, date: sd?.date ?? '' };
+					})
+					.filter((a) => a.date)
+					.sort((a, b) => b.date.localeCompare(a.date))
+			: []
+	);
+
+	function getHoursWorked(checkIn: string | null, checkOut: string | null): number | null {
+		if (!checkIn || !checkOut) return null;
+		const [h1, m1] = checkIn.split(':').map(Number);
+		const [h2, m2] = checkOut.split(':').map(Number);
+		let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+		if (diff < 0) diff += 24 * 60;
+		return diff / 60;
+	}
+
+	function getEffectiveRate(a: { rate_override: number | null; check_in: string | null; check_out: string | null }, baseRate: number): number {
+		const rate = a.rate_override ?? baseRate;
+		const hours = getHoursWorked(a.check_in, a.check_out);
+		if (hours === null) return rate;
+		return rate * (hours / FULL_SHIFT_HOURS);
+	}
+
+	// Calendar month navigation
+	let calendarMonth = $state(new Date());
+	const calendarDays = $derived(() => {
+		const year = calendarMonth.getFullYear();
+		const month = calendarMonth.getMonth();
+		const firstDay = new Date(year, month, 1);
+		const lastDay = new Date(year, month + 1, 0);
+		const startPad = firstDay.getDay(); // 0=Sun
+		const days: { date: string; inMonth: boolean; worked: boolean }[] = [];
+
+		const workedDates = new Set(allAssignments.map((a) => a.date));
+
+		// Pad start
+		for (let i = 0; i < startPad; i++) {
+			const d = new Date(year, month, 1 - startPad + i);
+			days.push({ date: d.toISOString().split('T')[0], inMonth: false, worked: workedDates.has(d.toISOString().split('T')[0]) });
+		}
+		// Days in month
+		for (let d = 1; d <= lastDay.getDate(); d++) {
+			const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+			days.push({ date: dateStr, inMonth: true, worked: workedDates.has(dateStr) });
+		}
+		return days;
+	});
+
+	function prevMonth() { calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1); }
+	function nextMonth() { calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1); }
+
+	// Edit assignment inline
+	let editingAssignment = $state<string | null>(null);
+	let editAssignRate = $state(0);
+	let editAssignIn = $state('');
+	let editAssignOut = $state('');
+
+	function startEditAssignment(a: typeof allAssignments[0]) {
+		editingAssignment = a.id;
+		editAssignRate = a.rate_override ?? collab!.base_rate;
+		editAssignIn = a.check_in ?? '';
+		editAssignOut = a.check_out ?? '';
+	}
+
+	async function saveAssignment() {
+		if (!editingAssignment || !collab) return;
+		const rateOverride = editAssignRate === collab.base_rate ? null : editAssignRate;
+		await schedule.updateAssignmentRate(editingAssignment, rateOverride);
+		await schedule.updateAssignmentTimes(editingAssignment, editAssignIn || null, editAssignOut || null);
+		toast.success('Atualizado');
+		editingAssignment = null;
+	}
+
+	async function removeDay(assignmentId: string, dateId: string) {
+		if (!collab) return;
+		await schedule.toggleAssignment(dateId, collab.id);
+		toast.info('Dia removido');
+	}
 
 	function startEdit() {
 		if (!collab) return;
@@ -43,7 +131,7 @@
 		if (!collab) return;
 		const has = collab.roles.includes(role);
 		const newRoles = has ? collab.roles.filter((r) => r !== role) : [...collab.roles, role];
-		if (newRoles.length === 0) return; // must have at least one
+		if (newRoles.length === 0) return;
 		await collaborators.update(collab.id, { roles: newRoles });
 		toast.success(`Funções atualizadas`);
 	}
@@ -101,6 +189,88 @@
 					<button onclick={startEdit} class="rounded-lg bg-surface-2 px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-surface-3">{formatCurrency(collab.base_rate)}</button>
 				{/if}
 			</div>
+		</div>
+
+		<!-- Calendar dashboard -->
+		<div class="mb-5">
+			<div class="mb-3 flex items-center justify-between">
+				<h2 class="font-semibold">Dias Trabalhados</h2>
+				<span class="rounded-lg bg-success/15 px-2.5 py-1 text-sm font-semibold text-success">{allAssignments.length} dias</span>
+			</div>
+
+			<!-- Month navigation -->
+			<div class="mb-3 flex items-center justify-between rounded-xl bg-surface p-3 shadow-md shadow-black/10">
+				<button onclick={prevMonth} class="rounded-lg p-1.5 text-text-muted active:scale-90">
+					<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6" /></svg>
+				</button>
+				<span class="text-sm font-semibold capitalize">
+					{calendarMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+				</span>
+				<button onclick={nextMonth} class="rounded-lg p-1.5 text-text-muted active:scale-90">
+					<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" /></svg>
+				</button>
+			</div>
+
+			<!-- Calendar grid -->
+			<div class="mb-4 rounded-xl bg-surface p-3 shadow-md shadow-black/10">
+				<div class="mb-1 grid grid-cols-7 text-center text-[10px] font-bold text-text-muted">
+					<span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+				</div>
+				<div class="grid grid-cols-7 gap-0.5 text-center text-xs">
+					{#each calendarDays() as day}
+						<span
+							class="flex h-8 w-8 items-center justify-center rounded-full mx-auto
+								{!day.inMonth ? 'text-text-muted/30' : ''}
+								{day.worked ? 'bg-success/20 text-success font-bold' : ''}"
+						>
+							{new Date(day.date + 'T12:00:00').getDate()}
+						</span>
+					{/each}
+				</div>
+			</div>
+
+			<!-- Assignment list -->
+			{#if allAssignments.length > 0}
+				<div class="divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
+					{#each allAssignments as a}
+						{@const hours = getHoursWorked(a.check_in, a.check_out)}
+						{@const effective = collab ? getEffectiveRate(a, collab.base_rate) : 0}
+						{#if editingAssignment === a.id}
+							<div class="px-4 py-3 space-y-2">
+								<div class="flex items-center justify-between">
+									<span class="text-sm font-medium">{getDayName(a.date)} {formatDate(a.date)}</span>
+									<button onclick={() => (editingAssignment = null)} class="text-xs text-text-muted">Cancelar</button>
+								</div>
+								<div class="flex items-center gap-2">
+									<label class="text-[10px] text-text-muted">Valor</label>
+									<input type="number" bind:value={editAssignRate} class="w-20 rounded-lg bg-surface-2 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-accent/50" />
+								</div>
+								<div class="flex items-center gap-2">
+									<label class="text-[10px] text-text-muted">Entrada</label>
+									<input type="time" bind:value={editAssignIn} class="rounded-lg bg-surface-2 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-accent/50" />
+									<label class="text-[10px] text-text-muted">Saída</label>
+									<input type="time" bind:value={editAssignOut} class="rounded-lg bg-surface-2 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-accent/50" />
+								</div>
+								<div class="flex gap-2">
+									<button onclick={saveAssignment} class="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white">Salvar</button>
+									<button onclick={() => removeDay(a.id, a.date_id)} class="rounded-lg bg-surface-2 px-3 py-1.5 text-xs font-medium text-accent">Remover dia</button>
+								</div>
+							</div>
+						{:else}
+							<button onclick={() => startEditAssignment(a)} class="flex w-full items-center justify-between px-4 py-3 text-left transition-colors active:bg-surface-2">
+								<div class="text-sm">
+									<span class="font-medium">{getDayName(a.date)}</span>
+									<span class="text-text-muted"> {formatDate(a.date)}</span>
+									{#if hours !== null}
+										<span class="ml-1 text-info text-xs">({hours.toFixed(1)}h)</span>
+									{/if}
+								</div>
+								<span class="text-sm font-medium">{formatCurrency(effective)}</span>
+							</button>
+						{/if}
+					{/each}
+				</div>
+			{/if}
 		</div>
 
 		<div class="mb-3 flex items-center justify-between" style="animation-delay: 80ms">
