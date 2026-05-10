@@ -4,6 +4,7 @@
 	import StarRating from '$lib/components/StarRating.svelte';
 	import { collaborators, ALL_ROLES, type Role } from '$lib/stores/collaborators.svelte';
 	import { consumption } from '$lib/stores/consumption.svelte';
+	import { purchases } from '$lib/stores/purchases.svelte';
 	import { schedule } from '$lib/stores/schedule.svelte';
 	import { products } from '$lib/stores/products.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
@@ -141,6 +142,33 @@
 		} catch (e: any) {
 			toast.error(e.message ?? 'Erro ao adicionar dia');
 		}
+	}
+
+	// Reimbursements for this collaborator
+	const reimbursements = $derived(
+		collab ? purchases.pendingByCollaborator(collab.id) : []
+	);
+	const totalReimbursements = $derived(
+		reimbursements.reduce((sum, p) => sum + p.amount, 0)
+	);
+
+	let showAddReimbursement = $state(false);
+	let reimbAmount = $state(0);
+	let reimbNotes = $state('');
+	let reimbDate = $state(todayISO());
+
+	async function addReimbursement() {
+		if (!collab || reimbAmount <= 0) return;
+		await purchases.add({
+			amount: reimbAmount,
+			date: reimbDate,
+			notes: reimbNotes,
+			collaborator_id: collab.id,
+		});
+		toast.success('Ressarcimento adicionado');
+		showAddReimbursement = false;
+		reimbAmount = 0;
+		reimbNotes = '';
 	}
 
 	function startEdit() {
@@ -381,6 +409,67 @@
 				{/each}
 			</div>
 		{/if}
+		<!-- Reimbursements -->
+		<div class="mb-5 mt-5">
+			<div class="mb-3 flex items-center justify-between">
+				<h2 class="font-semibold">Ressarcimentos</h2>
+				<div class="flex items-center gap-2">
+					{#if totalReimbursements > 0}
+						<span class="rounded-lg bg-warning/15 px-2.5 py-1 text-sm font-semibold text-warning">{formatCurrency(totalReimbursements)}</span>
+					{/if}
+					<button
+						onclick={() => { showAddReimbursement = !showAddReimbursement; reimbDate = todayISO(); }}
+						class="rounded-lg bg-accent px-2.5 py-1 text-sm font-medium text-white shadow-md shadow-accent/20 active:scale-95"
+					>+ Ressarcimento</button>
+				</div>
+			</div>
+
+			{#if showAddReimbursement}
+				<div class="mb-3 rounded-2xl bg-surface p-4 shadow-lg shadow-black/20 ring-1 ring-accent/20 space-y-3">
+					<div class="flex items-center gap-2">
+						<label class="text-xs text-text-muted">Valor</label>
+						<input type="number" bind:value={reimbAmount} step="0.01" class="w-28 rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
+					</div>
+					<div class="flex items-center gap-2">
+						<label class="text-xs text-text-muted">Data</label>
+						<input type="date" bind:value={reimbDate} class="rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
+					</div>
+					<div class="flex items-center gap-2">
+						<label class="text-xs text-text-muted">Nota</label>
+						<input type="text" bind:value={reimbNotes} placeholder="Ex: Uber, gelo, etc." class="flex-1 rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
+					</div>
+					<div class="flex gap-2">
+						<button onclick={addReimbursement} class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white">Adicionar</button>
+						<button onclick={() => (showAddReimbursement = false)} class="rounded-lg bg-surface-2 px-4 py-2 text-sm font-medium text-text-muted">Cancelar</button>
+					</div>
+				</div>
+			{/if}
+
+			{#if reimbursements.length === 0}
+				<p class="text-center text-sm text-text-muted py-4">Nenhum ressarcimento pendente</p>
+			{:else}
+				<div class="divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
+					{#each reimbursements as p}
+						<div class="flex items-center justify-between px-4 py-3">
+							<div>
+								<div class="text-sm font-medium">{p.notes || 'Ressarcimento'}</div>
+								<div class="text-xs text-text-muted">{formatDate(p.date)}</div>
+							</div>
+							<div class="flex items-center gap-3">
+								<span class="text-sm font-semibold text-warning">{formatCurrency(p.amount)}</span>
+								<button
+									onclick={async () => { await purchases.markReimbursed(p.id); toast.info('Marcado como pago'); }}
+									class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-success/15 hover:text-success"
+									aria-label="Marcar como pago"
+								>
+									<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" /></svg>
+								</button>
+							</div>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
 	</div>
 {:else}
 	<PageHeader title="Não encontrado" backHref="/colaboradores" />
