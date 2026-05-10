@@ -1,6 +1,6 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
-	import StarRating from '$lib/components/StarRating.svelte';
+
 	import { collaborators, COLLABORATOR_DISCOUNT } from '$lib/stores/collaborators.svelte';
 	import { consumption } from '$lib/stores/consumption.svelte';
 	import { schedule } from '$lib/stores/schedule.svelte';
@@ -186,7 +186,7 @@
 							<div class="flex-1">
 								<div class="flex items-center gap-2">
 									<span class="font-medium">{collab.name}</span>
-									<StarRating value={collab.stars} size="sm" readonly />
+									{#if collab.stars > 0}<span class="text-xs text-star">{collab.stars}★</span>{/if}
 								</div>
 								<div class="text-xs text-text-muted">
 									{formatCurrency(assignment.rate_override ?? collab.base_rate)}
@@ -233,7 +233,7 @@
 									{collab.name.slice(0, 2).toUpperCase()}
 								</span>
 								<span class="text-sm font-medium">{collab.name}</span>
-								<StarRating value={collab.stars} size="sm" readonly />
+								{#if collab.stars > 0}<span class="text-xs text-star">{collab.stars}★</span>{/if}
 							</div>
 						{/if}
 					{/each}
