@@ -44,7 +44,7 @@
 		nextAssigned.reduce((sum, a) => {
 			const c = collaborators.getById(a.collaborator_id);
 			if (!c || c.fixed) return sum;
-			const earned = a.rate_override ?? c.base_rate;
+			const earned = getEffectiveRate(a, c.base_rate);
 			const consumed = consumption.totalByCollaborator(c.id, (pid) => products.getPrice(pid));
 			return sum + earned - consumed;
 		}, 0)
@@ -82,6 +82,33 @@
 		await schedule.toggleAssignment(nextScheduleDate.id, collabId);
 		const name = collaborators.getById(collabId)?.name ?? '';
 		toast.info(`${name} removido`);
+	}
+
+	// Standard shift duration (hours) - used for proportional pay
+	const FULL_SHIFT_HOURS = 6;
+
+	function getHoursWorked(checkIn: string | null, checkOut: string | null): number | null {
+		if (!checkIn || !checkOut) return null;
+		const [h1, m1] = checkIn.split(':').map(Number);
+		const [h2, m2] = checkOut.split(':').map(Number);
+		let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+		if (diff < 0) diff += 24 * 60; // crossed midnight
+		return diff / 60;
+	}
+
+	function getEffectiveRate(assignment: { rate_override: number | null; check_in: string | null; check_out: string | null }, baseRate: number): number {
+		const rate = assignment.rate_override ?? baseRate;
+		const hours = getHoursWorked(assignment.check_in, assignment.check_out);
+		if (hours === null) return rate;
+		return rate * (hours / FULL_SHIFT_HOURS);
+	}
+
+	async function setTime(assignmentId: string, field: 'check_in' | 'check_out', value: string) {
+		const a = nextAssigned.find((x) => x.id === assignmentId);
+		if (!a) return;
+		const checkIn = field === 'check_in' ? (value || null) : a.check_in;
+		const checkOut = field === 'check_out' ? (value || null) : a.check_out;
+		await schedule.updateAssignmentTimes(assignmentId, checkIn, checkOut);
 	}
 
 	// Dynamic title
@@ -177,32 +204,56 @@
 					{@const collab = collaborators.getById(assignment.collaborator_id)}
 					{#if collab && !collab.fixed}
 						{@const consumed = consumption.totalByCollaborator(collab.id, (pid) => products.getPrice(pid))}
-						<div class="flex items-center gap-3 rounded-2xl bg-surface px-4 py-3 shadow-md shadow-black/10">
-							<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-surface-2 to-surface-3 text-sm font-bold">
-								{collab.name.slice(0, 2).toUpperCase()}
-							</div>
-							<div class="flex-1">
-								<div class="flex items-center gap-2">
-									<span class="font-medium">{collab.name}</span>
-									{#if collab.stars > 0}<span class="text-xs text-star">{collab.stars}★</span>{/if}
+						{@const effectiveRate = getEffectiveRate(assignment, collab.base_rate)}
+						{@const hours = getHoursWorked(assignment.check_in, assignment.check_out)}
+						<div class="rounded-2xl bg-surface px-4 py-3 shadow-md shadow-black/10">
+							<div class="flex items-center gap-3">
+								<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-surface-2 to-surface-3 text-sm font-bold">
+									{collab.name.slice(0, 2).toUpperCase()}
 								</div>
-								<div class="text-xs text-text-muted">
-									{formatCurrency(assignment.rate_override ?? collab.base_rate)}
-									{#if consumed > 0}
-										<span class="text-accent"> - {formatCurrency(consumed)} consumo</span>
-									{/if}
+								<div class="flex-1">
+									<div class="flex items-center gap-2">
+										<span class="font-medium">{collab.name}</span>
+										{#if collab.stars > 0}<span class="text-xs text-star">{collab.stars}★</span>{/if}
+									</div>
+									<div class="text-xs text-text-muted">
+										{formatCurrency(effectiveRate)}
+										{#if hours !== null}
+											<span class="text-info">({hours.toFixed(1)}h)</span>
+										{/if}
+										{#if consumed > 0}
+											<span class="text-accent"> - {formatCurrency(consumed)} consumo</span>
+										{/if}
+									</div>
 								</div>
+								<a href="/consumo?person={collab.id}" class="rounded-lg bg-accent-soft p-2 text-accent transition-all active:scale-90" aria-label="Anotar consumo">
+									<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+								</a>
+								<button
+									onclick={() => removeAssignment(collab.id)}
+									class="rounded-lg bg-surface-2 p-2 text-text-muted transition-all active:scale-90 hover:text-accent"
+									aria-label="Remover"
+								>
+									<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+								</button>
 							</div>
-							<a href="/consumo?person={collab.id}" class="rounded-lg bg-accent-soft p-2 text-accent transition-all active:scale-90" aria-label="Anotar consumo">
-								<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
-							</a>
-							<button
-								onclick={() => removeAssignment(collab.id)}
-								class="rounded-lg bg-surface-2 p-2 text-text-muted transition-all active:scale-90 hover:text-accent"
-								aria-label="Remover"
-							>
-								<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
-							</button>
+							<!-- Time tracking -->
+							<div class="mt-2 flex items-center gap-2 border-t border-surface-2 pt-2">
+								<span class="text-[10px] text-text-muted">Entrada</span>
+								<input
+									type="time"
+									value={assignment.check_in ?? ''}
+									onchange={(e) => setTime(assignment.id, 'check_in', e.currentTarget.value)}
+									class="w-[5.5rem] rounded-lg bg-surface-2 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-accent/50"
+								/>
+								<span class="text-[10px] text-text-muted">Saída</span>
+								<input
+									type="time"
+									value={assignment.check_out ?? ''}
+									onchange={(e) => setTime(assignment.id, 'check_out', e.currentTarget.value)}
+									class="w-[5.5rem] rounded-lg bg-surface-2 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-accent/50"
+								/>
+							</div>
 						</div>
 					{/if}
 				{/each}
