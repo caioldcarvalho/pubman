@@ -33,10 +33,8 @@
 		followingDate ? schedule.getAssignments(followingDate.id) : []
 	);
 
-	// Salao fixed staff
-	const salaoFixed = $derived(
-		collaborators.salaoStaff.filter((c) => c.fixed)
-	);
+	// All fixed staff
+	const allFixed = $derived(collaborators.fixedStaff);
 
 	// Toggle to include fixed in total
 	let includeFixed = $state(false);
@@ -53,7 +51,7 @@
 	);
 
 	const totalFixed = $derived(
-		salaoFixed.reduce((sum, c) => {
+		allFixed.reduce((sum, c) => {
 			const consumed = consumption.totalByCollaborator(c.id, (pid) => products.getPrice(pid));
 			return sum + c.base_rate - consumed;
 		}, 0)
@@ -61,11 +59,11 @@
 
 	const totalToRepass = $derived(includeFixed ? totalFreelas + totalFixed : totalFreelas);
 
-	// Quick add: available salao freelancers not yet assigned
+	// Quick add: available freelancers not yet assigned (all roles)
 	let showQuickAdd = $state(false);
 	const availableToAdd = $derived(
 		nextScheduleDate
-			? collaborators.salaoFreelancers.filter(
+			? collaborators.freelancers.filter(
 					(c) => !nextAssigned.some((a) => a.collaborator_id === c.id)
 				)
 			: []
@@ -245,14 +243,14 @@
 		{/if}
 
 		<!-- Fixed staff bar -->
-		{#if salaoFixed.length > 0}
+		{#if allFixed.length > 0}
 			<div class="rounded-2xl bg-info/10 p-4 ring-1 ring-info/20">
 				<div class="mb-3 flex items-center justify-between">
 					<span class="text-xs font-bold uppercase tracking-wider text-info">Equipe Fixa</span>
 					<span class="text-xs text-text-muted">Presentes todos os dias</span>
 				</div>
 				<div class="flex flex-wrap gap-2">
-					{#each salaoFixed as collab}
+					{#each allFixed as collab}
 						{@const consumed = consumption.totalByCollaborator(collab.id, (pid) => products.getPrice(pid))}
 						<div class="flex items-center gap-2 rounded-xl bg-surface/60 px-3 py-2">
 							<span class="flex h-7 w-7 items-center justify-center rounded-full bg-info/20 text-xs font-bold text-info">
