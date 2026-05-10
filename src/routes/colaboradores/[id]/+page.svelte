@@ -322,16 +322,25 @@
 								</div>
 							</div>
 						{:else}
-							<button onclick={() => startEditAssignment(a)} class="flex w-full items-center justify-between px-4 py-3 text-left transition-colors active:bg-surface-2">
-								<div class="text-sm">
-									<span class="font-medium">{getDayName(a.date)}</span>
-									<span class="text-text-muted"> {formatDate(a.date)}</span>
-									{#if hours !== null}
-										<span class="ml-1 text-info text-xs">({hours.toFixed(1)}h)</span>
-									{/if}
-								</div>
-								<span class="text-sm font-medium">{formatCurrency(effective)}</span>
-							</button>
+							<div class="flex items-center">
+								<button onclick={() => startEditAssignment(a)} class="flex flex-1 items-center justify-between px-4 py-3 text-left transition-colors active:bg-surface-2">
+									<div class="text-sm">
+										<span class="font-medium">{getDayName(a.date)}</span>
+										<span class="text-text-muted"> {formatDate(a.date)}</span>
+										{#if hours !== null}
+											<span class="ml-1 text-info text-xs">({hours.toFixed(1)}h)</span>
+										{/if}
+									</div>
+									<span class="text-sm font-medium">{formatCurrency(effective)}</span>
+								</button>
+								<button
+									onclick={() => removeDay(a.id, a.date_id)}
+									class="mr-3 rounded-lg p-1.5 text-text-muted transition-colors hover:bg-accent-soft hover:text-accent active:scale-90"
+									aria-label="Remover dia"
+								>
+									<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+								</button>
+							</div>
 						{/if}
 					{/each}
 				</div>
