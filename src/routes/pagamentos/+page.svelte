@@ -4,10 +4,31 @@
 	import { consumption } from '$lib/stores/consumption.svelte';
 	import { schedule } from '$lib/stores/schedule.svelte';
 	import { products } from '$lib/stores/products.svelte';
-	import { formatCurrency, todayISO } from '$lib/utils';
+	import { formatCurrency, formatDate, getDayName, todayISO } from '$lib/utils';
 
 	type Filter = 'todos' | 'fixos' | 'freelas';
 	let filter = $state<Filter>('todos');
+
+	// Recent days overview: last 5 scheduled days that had assignments
+	const recentDays = $derived(() => {
+		const today = todayISO();
+		const pastDates = schedule.dates
+			.filter((d) => d.date <= today)
+			.sort((a, b) => b.date.localeCompare(a.date));
+
+		const result: { date: typeof pastDates[0]; assigned: { name: string; id: string }[] }[] = [];
+		for (const sd of pastDates) {
+			const assignments = schedule.getAssignments(sd.id);
+			if (assignments.length === 0) continue;
+			const assigned = assignments.map((a) => {
+				const c = collaborators.getById(a.collaborator_id);
+				return { name: c?.name ?? '?', id: c?.id ?? '' };
+			});
+			result.push({ date: sd, assigned });
+			if (result.length >= 5) break;
+		}
+		return result;
+	});
 
 	const report = $derived(
 		collaborators.active
@@ -49,6 +70,31 @@
 			</button>
 		{/each}
 	</div>
+	<!-- Recent days overview -->
+	{#if recentDays().length > 0}
+		<div class="mb-5">
+			<h2 class="mb-2 text-xs font-bold uppercase tracking-wider text-text-muted">Últimas noites</h2>
+			<div class="space-y-1.5">
+				{#each recentDays() as day}
+					<div class="rounded-xl bg-surface px-3 py-2.5 shadow-sm shadow-black/5">
+						<div class="mb-1 flex items-center gap-2">
+							<span class="text-xs font-bold">{getDayName(day.date.date)}</span>
+							<span class="text-xs text-text-muted">{formatDate(day.date.date)}</span>
+							<span class="ml-auto rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-bold">{day.assigned.length}</span>
+						</div>
+						<div class="flex flex-wrap gap-1">
+							{#each day.assigned as person}
+								<a href="/colaboradores/{person.id}" class="rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium transition-colors hover:bg-surface-3">
+									{person.name}
+								</a>
+							{/each}
+						</div>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
 	{#if report.length === 0}
 		<div class="flex flex-col items-center py-16 text-center">
 			<div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-surface-2">
