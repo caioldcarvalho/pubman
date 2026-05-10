@@ -9,6 +9,7 @@
 	] as const;
 
 	const moreLinks = [
+		{ href: '/dia', label: 'Gerenciar Dia', icon: 'M8 7V3M16 7V3M7 11h10M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z' },
 		{ href: '/colaboradores', label: 'Colaboradores', icon: 'M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2M9 7a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75' },
 		{ href: '/cardapio', label: 'Cardápio', icon: 'M4 19h16M4 15h16M4 11h16M4 7h16' },
 		{ href: '/compras', label: 'Compras', icon: 'M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0' },
