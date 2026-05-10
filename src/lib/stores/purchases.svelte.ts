@@ -6,6 +6,7 @@ export interface Purchase {
 	date: string;
 	notes: string;
 	reimbursed: boolean;
+	collaborator_id: string | null;
 	created_at: string;
 }
 
@@ -21,6 +22,14 @@ class PurchaseStore {
 		return this.pending.reduce((sum, p) => sum + p.amount, 0);
 	}
 
+	pendingByCollaborator(collaboratorId: string): Purchase[] {
+		return this.pending.filter((p) => p.collaborator_id === collaboratorId);
+	}
+
+	totalPendingByCollaborator(collaboratorId: string): number {
+		return this.pendingByCollaborator(collaboratorId).reduce((sum, p) => sum + p.amount, 0);
+	}
+
 	async load() {
 		const { data } = await supabase
 			.from('purchases')
@@ -30,7 +39,7 @@ class PurchaseStore {
 		this.loaded = true;
 	}
 
-	async add(purchase: { amount: number; date: string; notes: string }) {
+	async add(purchase: { amount: number; date: string; notes: string; collaborator_id?: string | null }) {
 		const { data } = await supabase.from('purchases').insert(purchase).select().single();
 		if (data) this.list.unshift(data);
 	}
