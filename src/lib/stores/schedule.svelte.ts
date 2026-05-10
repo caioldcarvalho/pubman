@@ -303,6 +303,54 @@ class ScheduleStore {
 		}
 	}
 
+	async getOrCreateDate(dateStr: string): Promise<ScheduleDate> {
+		// Find existing schedule_date for this date
+		const existing = this.dates.find((d) => d.date === dateStr);
+		if (existing) return existing;
+
+		// Find active period that covers this date, or create ad-hoc
+		let periodId: string;
+		const period = this.periods.find((p) => p.start_date <= dateStr && p.end_date >= dateStr);
+		if (period) {
+			periodId = period.id;
+		} else {
+			// Create a minimal period for this date
+			const { data: newPeriod } = await supabase
+				.from('schedule_periods')
+				.insert({ start_date: dateStr, end_date: dateStr })
+				.select()
+				.single();
+			if (!newPeriod) throw new Error('Failed to create period');
+			this.periods.unshift(newPeriod);
+			periodId = newPeriod.id;
+		}
+
+		const dow = new Date(dateStr + 'T12:00:00').getDay();
+		const { data: newDate } = await supabase
+			.from('schedule_dates')
+			.insert({ period_id: periodId, date: dateStr, day_of_week: dow, required_count: 1 })
+			.select()
+			.single();
+		if (!newDate) throw new Error('Failed to create schedule date');
+		this.dates.push(newDate);
+		return newDate;
+	}
+
+	async addRetroactiveAssignment(collaboratorId: string, dateStr: string, rateOverride: number | null, checkIn: string | null, checkOut: string | null) {
+		const schedDate = await this.getOrCreateDate(dateStr);
+		// Check if already assigned
+		if (this.isAssigned(schedDate.id, collaboratorId)) {
+			throw new Error('Já escalado nesse dia');
+		}
+		const { data } = await supabase
+			.from('assignments')
+			.insert({ date_id: schedDate.id, collaborator_id: collaboratorId, rate_override: rateOverride, check_in: checkIn, check_out: checkOut })
+			.select()
+			.single();
+		if (data) this.assignments.push(data);
+		return data;
+	}
+
 	async clearAssignmentsForCollaborator(collaboratorId: string) {
 		const ids = this.assignments.filter((a) => a.collaborator_id === collaboratorId).map((a) => a.id);
 		if (ids.length > 0) {

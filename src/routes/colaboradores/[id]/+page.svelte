@@ -109,6 +109,40 @@
 		toast.info('Dia removido');
 	}
 
+	// Add retroactive day
+	let showAddDay = $state(false);
+	let addDayDate = $state(todayISO());
+	let addDayRate = $state(0);
+	let addDayIn = $state('');
+	let addDayOut = $state('');
+
+	function openAddDay() {
+		if (!collab) return;
+		addDayDate = todayISO();
+		addDayRate = collab.base_rate;
+		addDayIn = '';
+		addDayOut = '';
+		showAddDay = true;
+	}
+
+	async function confirmAddDay() {
+		if (!collab) return;
+		try {
+			const rateOverride = addDayRate === collab.base_rate ? null : addDayRate;
+			await schedule.addRetroactiveAssignment(
+				collab.id,
+				addDayDate,
+				rateOverride,
+				addDayIn || null,
+				addDayOut || null,
+			);
+			toast.success(`Dia ${addDayDate} adicionado`);
+			showAddDay = false;
+		} catch (e: any) {
+			toast.error(e.message ?? 'Erro ao adicionar dia');
+		}
+	}
+
 	function startEdit() {
 		if (!collab) return;
 		editRate = collab.base_rate;
@@ -195,8 +229,39 @@
 		<div class="mb-5">
 			<div class="mb-3 flex items-center justify-between">
 				<h2 class="font-semibold">Dias Trabalhados</h2>
-				<span class="rounded-lg bg-success/15 px-2.5 py-1 text-sm font-semibold text-success">{allAssignments.length} dias</span>
+				<div class="flex items-center gap-2">
+					<span class="rounded-lg bg-success/15 px-2.5 py-1 text-sm font-semibold text-success">{allAssignments.length} dias</span>
+					<button
+						onclick={openAddDay}
+						class="rounded-lg bg-accent px-2.5 py-1 text-sm font-medium text-white shadow-md shadow-accent/20 active:scale-95"
+					>+ Dia</button>
+				</div>
 			</div>
+
+			<!-- Add day form -->
+			{#if showAddDay}
+				<div class="mb-4 rounded-2xl bg-surface p-4 shadow-lg shadow-black/20 ring-1 ring-accent/20 space-y-3">
+					<p class="text-sm font-medium">Adicionar dia trabalhado</p>
+					<div class="flex items-center gap-2">
+						<label class="text-xs text-text-muted">Data</label>
+						<input type="date" bind:value={addDayDate} class="flex-1 rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
+					</div>
+					<div class="flex items-center gap-2">
+						<label class="text-xs text-text-muted">Valor</label>
+						<input type="number" bind:value={addDayRate} class="w-24 rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
+					</div>
+					<div class="flex items-center gap-2">
+						<label class="text-xs text-text-muted">Entrada</label>
+						<input type="time" bind:value={addDayIn} class="rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
+						<label class="text-xs text-text-muted">Saída</label>
+						<input type="time" bind:value={addDayOut} class="rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
+					</div>
+					<div class="flex gap-2">
+						<button onclick={confirmAddDay} class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white">Adicionar</button>
+						<button onclick={() => (showAddDay = false)} class="rounded-lg bg-surface-2 px-4 py-2 text-sm font-medium text-text-muted">Cancelar</button>
+					</div>
+				</div>
+			{/if}
 
 			<!-- Month navigation -->
 			<div class="mb-3 flex items-center justify-between rounded-xl bg-surface p-3 shadow-md shadow-black/10">
