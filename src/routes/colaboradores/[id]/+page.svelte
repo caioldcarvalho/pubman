@@ -14,8 +14,8 @@
 	const DISCOUNT = 0.20;
 	const total = $derived(
 		entries.reduce((sum, e) => {
-			const product = products.getById(e.product_id);
-			return sum + (product ? product.price * e.quantity * (1 - DISCOUNT) : 0);
+			const price = e.custom_price ?? (products.getById(e.product_id!)?.price ?? 0);
+			return sum + price * e.quantity * (1 - DISCOUNT);
 		}, 0)
 	);
 
@@ -348,14 +348,16 @@
 		{:else}
 			<div class="stagger divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
 				{#each entries as entry}
-					{@const product = products.getById(entry.product_id)}
+					{@const product = entry.product_id ? products.getById(entry.product_id) : null}
+					{@const name = entry.custom_name ?? product?.name ?? 'Produto removido'}
+					{@const price = entry.custom_price ?? product?.price ?? 0}
 					<div class="flex items-center justify-between px-4 py-3">
 						<div>
-							<div class="text-sm font-medium">{product?.name ?? 'Produto removido'}</div>
+							<div class="text-sm font-medium">{name}</div>
 							<div class="text-xs text-text-muted">{formatDate(entry.date)} &middot; {entry.quantity}x</div>
 						</div>
 						<div class="flex items-center gap-3">
-							<span class="text-sm font-medium">{formatCurrency((product?.price ?? 0) * entry.quantity)}</span>
+							<span class="text-sm font-medium">{formatCurrency(price * entry.quantity * (1 - DISCOUNT))}</span>
 							<button
 								onclick={async () => { await consumption.remove(entry.id); toast.info('Consumo removido'); }}
 								class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-accent-soft hover:text-accent"

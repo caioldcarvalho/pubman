@@ -21,10 +21,11 @@
 		collab ? assignments.reduce((sum, a) => sum + (a.rate_override ?? collab.base_rate), 0) : 0
 	);
 
+	const DISCOUNT = 0.20;
 	const totalConsumed = $derived(
 		entries.reduce((sum, e) => {
-			const p = products.getById(e.product_id);
-			return sum + (p ? p.price * e.quantity : 0);
+			const price = e.custom_price ?? (products.getById(e.product_id!)?.price ?? 0);
+			return sum + price * e.quantity * (1 - DISCOUNT);
 		}, 0)
 	);
 
@@ -100,10 +101,12 @@
 		{:else}
 			<div class="stagger mb-5 divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
 				{#each entries as entry}
-					{@const product = products.getById(entry.product_id)}
+					{@const product = entry.product_id ? products.getById(entry.product_id) : null}
+					{@const name = entry.custom_name ?? product?.name ?? '?'}
+					{@const price = entry.custom_price ?? product?.price ?? 0}
 					<div class="flex items-center justify-between px-4 py-3">
-						<div class="text-sm">{product?.name ?? '?'} <span class="text-text-muted">x{entry.quantity}</span></div>
-						<span class="text-sm font-medium text-accent">{formatCurrency((product?.price ?? 0) * entry.quantity)}</span>
+						<div class="text-sm">{name} <span class="text-text-muted">x{entry.quantity}</span></div>
+						<span class="text-sm font-medium text-accent">{formatCurrency(price * entry.quantity * (1 - DISCOUNT))}</span>
 					</div>
 				{/each}
 			</div>
