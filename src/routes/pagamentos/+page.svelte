@@ -5,6 +5,7 @@
 	import { purchases } from '$lib/stores/purchases.svelte';
 	import { schedule } from '$lib/stores/schedule.svelte';
 	import { products } from '$lib/stores/products.svelte';
+	import { toast } from '$lib/stores/toast.svelte';
 	import { formatCurrency, formatDate, getDayName, todayISO } from '$lib/utils';
 
 	// Multi-select toggles (default: freelas + ressarcimentos)
@@ -111,9 +112,40 @@
 			.filter((item) => !excluded.has(item.id))
 			.reduce((sum, item) => sum + item.net, 0)
 	);
+
+	const includedItems = $derived(allItems.filter((item) => !excluded.has(item.id)));
+
+	function buildShareText(): string {
+		const lines: string[] = ['💰 *Pagamentos*', ''];
+		for (const item of includedItems) {
+			const emoji = item.type === 'reimb' ? '📦' : '👤';
+			lines.push(`${emoji} ${item.label}: ${formatCurrency(item.net)}`);
+		}
+		lines.push('', `*Total: ${formatCurrency(totalNet)}*`);
+		return lines.join('\n');
+	}
+
+	async function share() {
+		const text = buildShareText();
+		if (navigator.share) {
+			await navigator.share({ text });
+		} else {
+			await navigator.clipboard.writeText(text);
+			toast.success('Copiado para a área de transferência');
+		}
+	}
 </script>
 
-<PageHeader title="Pagamentos" />
+<PageHeader title="Pagamentos">
+	{#if allItems.length > 0}
+		<button
+			onclick={share}
+			class="rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-white shadow-md shadow-accent/20 transition-all active:scale-95"
+		>
+			Compartilhar
+		</button>
+	{/if}
+</PageHeader>
 
 <div class="px-4 py-4">
 	<!-- Multi-toggle filters -->

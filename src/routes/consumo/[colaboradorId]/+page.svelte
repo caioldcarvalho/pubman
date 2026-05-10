@@ -5,6 +5,7 @@
 	import { consumption } from '$lib/stores/consumption.svelte';
 	import { products } from '$lib/stores/products.svelte';
 	import { DISCOUNT } from '$lib/stores/consumption.svelte';
+	import { toast } from '$lib/stores/toast.svelte';
 	import { formatCurrency, formatDate } from '$lib/utils';
 
 	const collab = $derived(collaborators.getById(page.params.colaboradorId));
@@ -12,17 +13,50 @@
 	const total = $derived(
 		entries.reduce((sum, e) => {
 			if (e.custom_price != null) {
-				// custom_price is stored inflated; show real value: inflated * (1 - DISCOUNT)
 				return sum + e.custom_price * (1 - DISCOUNT) * e.quantity;
 			}
 			const p = products.getById(e.product_id!);
 			return sum + (p ? p.price * e.quantity : 0);
 		}, 0)
 	);
+
+	function buildShareText(): string {
+		if (!collab) return '';
+		const lines: string[] = [`🍺 *Consumo - ${collab.name}*`, ''];
+		for (const e of entries) {
+			const product = e.product_id ? products.getById(e.product_id) : null;
+			const name = e.custom_name ?? product?.name ?? '?';
+			const price = e.custom_price != null
+				? e.custom_price * (1 - DISCOUNT)
+				: (product?.price ?? 0);
+			lines.push(`• ${name} x${e.quantity} — ${formatCurrency(price * e.quantity)}`);
+		}
+		lines.push('', `*Total: ${formatCurrency(total)}*`);
+		return lines.join('\n');
+	}
+
+	async function share() {
+		const text = buildShareText();
+		if (navigator.share) {
+			await navigator.share({ text });
+		} else {
+			await navigator.clipboard.writeText(text);
+			toast.success('Copiado para a área de transferência');
+		}
+	}
 </script>
 
 {#if collab}
-	<PageHeader title="Consumo - {collab.name}" backHref="/consumo" />
+	<PageHeader title="Consumo - {collab.name}" backHref="/consumo">
+		{#if entries.length > 0}
+			<button
+				onclick={share}
+				class="rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-white shadow-md shadow-accent/20 transition-all active:scale-95"
+			>
+				Compartilhar
+			</button>
+		{/if}
+	</PageHeader>
 
 	<div class="px-4 py-4">
 		<div class="mb-4 rounded-xl bg-surface p-4 text-center">
