@@ -6,20 +6,29 @@
 	import { products } from '$lib/stores/products.svelte';
 	import { formatCurrency, todayISO } from '$lib/utils';
 
+	type Filter = 'todos' | 'fixos' | 'freelas';
+	let filter = $state<Filter>('todos');
+
 	const report = $derived(
-		collaborators.active.map((collab) => {
-			const assignments = schedule.getPastAssignments(collab.id, todayISO());
-			const daysWorked = assignments.length;
-			const earned = assignments.reduce((sum, a) => sum + (a.rate_override ?? collab.base_rate), 0);
-			const consumed = consumption.totalByCollaborator(collab.id, (pid) => products.getPrice(pid));
-			return {
-				collab,
-				daysWorked,
-				earned,
-				consumed,
-				net: earned - consumed,
-			};
-		}).filter((r) => r.daysWorked > 0 || r.consumed > 0)
+		collaborators.active
+			.filter((c) => {
+				if (filter === 'fixos') return c.fixed;
+				if (filter === 'freelas') return !c.fixed;
+				return true;
+			})
+			.map((collab) => {
+				const assignments = schedule.getPastAssignments(collab.id, todayISO());
+				const daysWorked = assignments.length;
+				const earned = assignments.reduce((sum, a) => sum + (a.rate_override ?? collab.base_rate), 0);
+				const consumed = consumption.totalByCollaborator(collab.id, (pid) => products.getPrice(pid));
+				return {
+					collab,
+					daysWorked,
+					earned,
+					consumed,
+					net: earned - consumed,
+				};
+			}).filter((r) => r.daysWorked > 0 || r.consumed > 0)
 	);
 
 	const totalNet = $derived(report.reduce((sum, r) => sum + r.net, 0));
@@ -28,6 +37,18 @@
 <PageHeader title="Pagamentos" />
 
 <div class="px-4 py-4">
+	<!-- Filter -->
+	<div class="mb-4 flex gap-2">
+		{#each [['todos', 'Todos'], ['fixos', 'Fixos'], ['freelas', 'Freelas']] as [value, label]}
+			<button
+				onclick={() => (filter = value as Filter)}
+				class="rounded-xl px-3 py-1.5 text-sm font-medium transition-all
+					{filter === value ? 'bg-accent text-white shadow-md shadow-accent/20' : 'bg-surface-2 text-text-muted'}"
+			>
+				{label}
+			</button>
+		{/each}
+	</div>
 	{#if report.length === 0}
 		<div class="flex flex-col items-center py-16 text-center">
 			<div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-surface-2">
