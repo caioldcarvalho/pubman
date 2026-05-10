@@ -28,6 +28,8 @@ export interface Assignment {
 	collaborator_id: string;
 	rate_override: number | null;
 	notes: string;
+	check_in: string | null;
+	check_out: string | null;
 }
 
 class ScheduleStore {
@@ -290,6 +292,15 @@ class ScheduleStore {
 		await supabase.from('assignments').update({ rate_override: rateOverride }).eq('id', assignmentId);
 		const a = this.assignments.find((a) => a.id === assignmentId);
 		if (a) a.rate_override = rateOverride;
+	}
+
+	async updateAssignmentTimes(assignmentId: string, checkIn: string | null, checkOut: string | null) {
+		await supabase.from('assignments').update({ check_in: checkIn, check_out: checkOut }).eq('id', assignmentId);
+		const a = this.assignments.find((a) => a.id === assignmentId);
+		if (a) {
+			a.check_in = checkIn;
+			a.check_out = checkOut;
+		}
 	}
 
 	async clearAssignmentsForCollaborator(collaboratorId: string) {
