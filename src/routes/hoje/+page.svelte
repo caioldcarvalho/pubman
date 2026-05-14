@@ -5,6 +5,7 @@
 	import { consumption } from '$lib/stores/consumption.svelte';
 	import { schedule } from '$lib/stores/schedule.svelte';
 	import { products } from '$lib/stores/products.svelte';
+	import { events } from '$lib/stores/events.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatCurrency, formatDate, getDayName, todayISO } from '$lib/utils';
 
@@ -32,6 +33,9 @@
 	const followingAssigned = $derived(
 		followingDate ? schedule.getAssignments(followingDate.id) : []
 	);
+
+	const nextEvents = $derived(nextScheduleDate ? events.getByDateId(nextScheduleDate.id) : []);
+	const followingEvents = $derived(followingDate ? events.getByDateId(followingDate.id) : []);
 
 	// All fixed staff
 	const allFixed = $derived(collaborators.fixedStaff);
@@ -198,6 +202,33 @@
 				</span>
 			</div>
 
+			<!-- Events on this date -->
+			{#each nextEvents as evt}
+				<div class="mb-3 rounded-2xl bg-gradient-to-br from-warning/15 to-transparent p-4 ring-1 ring-warning/20 shadow-md shadow-warning/10">
+					<div class="flex items-center gap-2">
+						<svg class="h-4 w-4 text-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12V7a2 2 0 012-2h10a2 2 0 012 2v5M3 12h18v8a1 1 0 01-1 1H4a1 1 0 01-1-1v-8z" /></svg>
+						<span class="text-[10px] font-bold uppercase tracking-wider text-warning">Evento</span>
+					</div>
+					<div class="mt-1 font-semibold">{evt.name}</div>
+					{#if evt.description}
+						<p class="mt-0.5 text-xs text-text-muted">{evt.description}</p>
+					{/if}
+					<div class="mt-2 flex flex-wrap gap-2 text-[11px]">
+						{#if evt.expected_attendees !== null}
+							<span class="rounded-md bg-info/15 px-2 py-0.5 font-medium text-info">{evt.expected_attendees} pessoas</span>
+						{/if}
+						{#if evt.reserved_tables}
+							<span class="rounded-md bg-surface-2 px-2 py-0.5 font-medium">Mesas: {evt.reserved_tables}</span>
+						{/if}
+					</div>
+					{#if nextAssigned.length === 0}
+						<a href="/dia" class="mt-3 block rounded-xl bg-warning/20 px-3 py-2 text-center text-xs font-medium text-warning ring-1 ring-warning/30">
+							Ninguém escalado — escalar agora
+						</a>
+					{/if}
+				</div>
+			{/each}
+
 			<!-- Assigned freelas -->
 			<div class="stagger space-y-1.5">
 				{#each nextAssigned as assignment}
@@ -273,6 +304,25 @@
 						{followingAssigned.length}/{followingDate.required_count}
 					</span>
 				</div>
+				{#each followingEvents as evt}
+					<div class="mb-2 rounded-xl bg-warning/10 px-3 py-2.5 ring-1 ring-warning/20">
+						<div class="flex items-center gap-2">
+							<span class="text-[10px] font-bold uppercase tracking-wider text-warning">Evento</span>
+							<span class="text-sm font-medium">{evt.name}</span>
+						</div>
+						{#if evt.description}
+							<p class="mt-0.5 text-xs text-text-muted">{evt.description}</p>
+						{/if}
+						<div class="mt-1 flex flex-wrap gap-1.5 text-[10px]">
+							{#if evt.expected_attendees !== null}
+								<span class="rounded bg-info/15 px-1.5 py-0.5 text-info">{evt.expected_attendees} pessoas</span>
+							{/if}
+							{#if evt.reserved_tables}
+								<span class="rounded bg-surface-2 px-1.5 py-0.5">Mesas: {evt.reserved_tables}</span>
+							{/if}
+						</div>
+					</div>
+				{/each}
 				<div class="space-y-1.5">
 					{#each followingAssigned as assignment}
 						{@const collab = collaborators.getById(assignment.collaborator_id)}
