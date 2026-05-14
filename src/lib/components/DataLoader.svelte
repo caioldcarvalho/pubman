@@ -6,13 +6,14 @@
 	import { schedule } from '$lib/stores/schedule.svelte';
 	import { payments } from '$lib/stores/payments.svelte';
 	import { events } from '$lib/stores/events.svelte';
+	import { tasks } from '$lib/stores/tasks.svelte';
 	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
 
 	const allLoaded = $derived(
-		collaborators.loaded && products.loaded && consumption.loaded && purchases.loaded && schedule.loaded && payments.loaded && events.loaded
+		collaborators.loaded && products.loaded && consumption.loaded && purchases.loaded && schedule.loaded && payments.loaded && events.loaded && tasks.loaded
 	);
 
 	// Load once on mount, not on every reactive update
@@ -24,6 +25,7 @@
 		if (!schedule.loaded) schedule.load();
 		if (!payments.loaded) payments.load();
 		if (!events.loaded) events.load();
+		if (!tasks.loaded) tasks.load();
 	});
 </script>
 
