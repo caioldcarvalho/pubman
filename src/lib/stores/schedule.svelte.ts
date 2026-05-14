@@ -30,6 +30,7 @@ export interface Assignment {
 	notes: string;
 	check_in: string | null;
 	check_out: string | null;
+	payment_id: string | null;
 }
 
 class ScheduleStore {
@@ -220,9 +221,14 @@ class ScheduleStore {
 	getPastAssignments(collaboratorId: string, today: string): Assignment[] {
 		return this.assignments.filter((a) => {
 			if (a.collaborator_id !== collaboratorId) return false;
+			if (a.payment_id) return false;
 			const schedDate = this._dateById.get(a.date_id);
 			return schedDate && schedDate.date <= today;
 		});
+	}
+
+	getAssignmentsByPayment(paymentId: string): Assignment[] {
+		return this.assignments.filter((a) => a.payment_id === paymentId);
 	}
 
 	async deletePeriod(periodId: string) {
@@ -351,12 +357,25 @@ class ScheduleStore {
 		return data;
 	}
 
-	async clearAssignmentsForCollaborator(collaboratorId: string) {
-		const ids = this.assignments.filter((a) => a.collaborator_id === collaboratorId).map((a) => a.id);
-		if (ids.length > 0) {
-			await supabase.from('assignments').delete().in('id', ids);
-			this.assignments = this.assignments.filter((a) => a.collaborator_id !== collaboratorId);
+	async settleAssignmentsForCollaborator(
+		collaboratorId: string,
+		paymentId: string,
+		today: string,
+	): Promise<string[]> {
+		const ids = this.assignments
+			.filter((a) => {
+				if (a.collaborator_id !== collaboratorId) return false;
+				if (a.payment_id) return false;
+				const sd = this._dateById.get(a.date_id);
+				return sd && sd.date <= today;
+			})
+			.map((a) => a.id);
+		if (ids.length === 0) return [];
+		await supabase.from('assignments').update({ payment_id: paymentId }).in('id', ids);
+		for (const a of this.assignments) {
+			if (ids.includes(a.id)) a.payment_id = paymentId;
 		}
+		return ids;
 	}
 }
 

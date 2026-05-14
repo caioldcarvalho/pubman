@@ -7,6 +7,7 @@ export interface Purchase {
 	notes: string;
 	reimbursed: boolean;
 	collaborator_id: string | null;
+	payment_id: string | null;
 	created_at: string;
 }
 
@@ -15,7 +16,7 @@ class PurchaseStore {
 	loaded = $state(false);
 
 	get pending() {
-		return this.list.filter((p) => !p.reimbursed);
+		return this.list.filter((p) => !p.reimbursed && !p.payment_id);
 	}
 
 	get totalPending() {
@@ -28,6 +29,10 @@ class PurchaseStore {
 
 	totalPendingByCollaborator(collaboratorId: string): number {
 		return this.pendingByCollaborator(collaboratorId).reduce((sum, p) => sum + p.amount, 0);
+	}
+
+	getByPayment(paymentId: string): Purchase[] {
+		return this.list.filter((p) => p.payment_id === paymentId);
 	}
 
 	async load() {
@@ -48,6 +53,24 @@ class PurchaseStore {
 		await supabase.from('purchases').update({ reimbursed: true }).eq('id', id);
 		const idx = this.list.findIndex((p) => p.id === id);
 		if (idx >= 0) this.list[idx] = { ...this.list[idx], reimbursed: true };
+	}
+
+	async settleByCollaborator(collaboratorId: string, paymentId: string): Promise<string[]> {
+		const pendingIds = this.list
+			.filter((p) => p.collaborator_id === collaboratorId && !p.reimbursed && !p.payment_id)
+			.map((p) => p.id);
+		if (pendingIds.length === 0) return [];
+		await supabase
+			.from('purchases')
+			.update({ payment_id: paymentId, reimbursed: true })
+			.in('id', pendingIds);
+		for (const p of this.list) {
+			if (pendingIds.includes(p.id)) {
+				p.payment_id = paymentId;
+				p.reimbursed = true;
+			}
+		}
+		return pendingIds;
 	}
 
 	async remove(id: string) {

@@ -19,6 +19,7 @@ export interface Collaborator {
 	stars: number;
 	active: boolean;
 	fixed: boolean;
+	pix_key: string | null;
 	created_at: string;
 }
 
@@ -81,7 +82,7 @@ class CollaboratorStore {
 		this.loaded = true;
 	}
 
-	async add(collab: Omit<Collaborator, 'id' | 'created_at'>) {
+	async add(collab: Omit<Collaborator, 'id' | 'created_at' | 'pix_key'> & { pix_key?: string | null }) {
 		const { data } = await supabase.from('collaborators').insert(collab).select().single();
 		if (data) this.list.push(data);
 	}

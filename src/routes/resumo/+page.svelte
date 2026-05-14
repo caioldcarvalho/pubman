@@ -10,7 +10,7 @@
 
 	const payroll = $derived(
 		collaborators.active.map((collab) => {
-			const assignments = schedule.assignments.filter((a) => a.collaborator_id === collab.id);
+			const assignments = schedule.assignments.filter((a) => a.collaborator_id === collab.id && !a.payment_id);
 			const earned = assignments.reduce((sum, a) => sum + (a.rate_override ?? collab.base_rate), 0);
 			const consumed = consumption.totalByCollaborator(collab.id, (pid) => products.getPrice(pid));
 			return { collab, earned, consumed, net: earned - consumed };

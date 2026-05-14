@@ -7,8 +7,9 @@
 	import { purchases } from '$lib/stores/purchases.svelte';
 	import { schedule } from '$lib/stores/schedule.svelte';
 	import { products } from '$lib/stores/products.svelte';
+	import { payments } from '$lib/stores/payments.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
-	import { formatCurrency, formatDate, getDayName, todayISO } from '$lib/utils';
+	import { formatCurrency, formatDate, formatDateFull, getDayName, todayISO } from '$lib/utils';
 
 	const collab = $derived(collaborators.getById(page.params.id));
 	const entries = $derived(collab ? consumption.getByCollaborator(collab.id) : []);
@@ -22,6 +23,31 @@
 
 	let editing = $state(false);
 	let editRate = $state(0);
+
+	let editingPix = $state(false);
+	let editPixKey = $state('');
+
+	function startEditPix() {
+		if (!collab) return;
+		editPixKey = collab.pix_key ?? '';
+		editingPix = true;
+	}
+
+	async function savePix() {
+		if (!collab) return;
+		const trimmed = editPixKey.trim();
+		await collaborators.update(collab.id, { pix_key: trimmed === '' ? null : trimmed });
+		toast.success('Chave PIX atualizada');
+		editingPix = false;
+	}
+
+	// Payment history
+	const paymentHistory = $derived(collab ? payments.getByCollaborator(collab.id) : []);
+	let expandedPayment = $state<string | null>(null);
+
+	function togglePayment(id: string) {
+		expandedPayment = expandedPayment === id ? null : id;
+	}
 
 	// Calendar: all assignments for this collaborator
 	const FULL_SHIFT_HOURS = 6;
@@ -251,6 +277,24 @@
 					<button onclick={startEdit} class="rounded-lg bg-surface-2 px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-surface-3">{formatCurrency(collab.base_rate)}</button>
 				{/if}
 			</div>
+
+			<div class="mt-3 flex items-center justify-between">
+				<span class="text-sm text-text-muted">Chave PIX</span>
+				{#if editingPix}
+					<div class="flex items-center gap-2">
+						<input
+							bind:value={editPixKey}
+							placeholder="CPF, e-mail, telefone..."
+							class="w-44 rounded-xl bg-surface-2 px-3 py-1.5 text-right text-xs outline-none focus:ring-2 focus:ring-accent/50"
+						/>
+						<button onclick={savePix} class="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white">Salvar</button>
+					</div>
+				{:else}
+					<button onclick={startEditPix} class="max-w-[55%] truncate rounded-lg bg-surface-2 px-3 py-1.5 text-right text-xs font-medium transition-colors hover:bg-surface-3">
+						{collab.pix_key ?? 'Adicionar'}
+					</button>
+				{/if}
+			</div>
 		</div>
 
 		<!-- Calendar dashboard -->
@@ -465,6 +509,90 @@
 									<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" /></svg>
 								</button>
 							</div>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
+
+		<!-- Payment history -->
+		<div class="mb-5">
+			<div class="mb-3 flex items-center justify-between">
+				<h2 class="font-semibold">Histórico de Pagamentos</h2>
+				{#if paymentHistory.length > 0}
+					<span class="rounded-lg bg-surface-2 px-2.5 py-1 text-xs font-medium text-text-muted">{paymentHistory.length}</span>
+				{/if}
+			</div>
+
+			{#if paymentHistory.length === 0}
+				<p class="text-center text-sm text-text-muted py-4">Nenhum pagamento registrado</p>
+			{:else}
+				<div class="divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
+					{#each paymentHistory as pmt}
+						{@const expanded = expandedPayment === pmt.id}
+						{@const pmtAssignments = schedule.getAssignmentsByPayment(pmt.id)}
+						{@const pmtConsumption = consumption.getByPayment(pmt.id)}
+						{@const pmtPurchases = purchases.getByPayment(pmt.id)}
+						<div>
+							<button
+								onclick={() => togglePayment(pmt.id)}
+								class="flex w-full items-center justify-between px-4 py-3 text-left transition-colors active:bg-surface-2"
+							>
+								<div>
+									<div class="text-sm font-medium">{formatDateFull(pmt.paid_at.slice(0, 10))}</div>
+									<div class="mt-0.5 text-[11px] text-text-muted">
+										{formatCurrency(pmt.total_earned)} ganhos · {formatCurrency(pmt.total_consumed)} consumo{pmt.total_reimbursed > 0 ? ` · +${formatCurrency(pmt.total_reimbursed)} ressarc.` : ''}
+									</div>
+								</div>
+								<div class="flex items-center gap-2">
+									<span class="rounded-lg bg-success/15 px-2.5 py-1 text-sm font-bold text-success">{formatCurrency(pmt.net_amount)}</span>
+									<svg class="h-4 w-4 text-text-muted transition-transform {expanded ? 'rotate-90' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" /></svg>
+								</div>
+							</button>
+							{#if expanded}
+								<div class="space-y-3 bg-surface-2/40 px-4 py-3 text-xs">
+									{#if pmtAssignments.length > 0}
+										<div>
+											<div class="mb-1.5 font-bold uppercase tracking-wider text-text-muted text-[10px]">Dias pagos</div>
+											{#each pmtAssignments as a}
+												{@const sd = schedule.getDateById(a.date_id)}
+												<div class="flex justify-between py-0.5">
+													<span>{sd ? `${getDayName(sd.date)} ${formatDate(sd.date)}` : 'dia removido'}</span>
+													<span class="font-medium">{formatCurrency(a.rate_override ?? collab.base_rate)}</span>
+												</div>
+											{/each}
+										</div>
+									{/if}
+									{#if pmtConsumption.length > 0}
+										<div>
+											<div class="mb-1.5 font-bold uppercase tracking-wider text-text-muted text-[10px]">Consumo descontado</div>
+											{#each pmtConsumption as e}
+												{@const product = e.product_id ? products.getById(e.product_id) : null}
+												{@const name = e.custom_name ?? product?.name ?? 'Produto removido'}
+												{@const price = e.custom_price ?? product?.price ?? 0}
+												<div class="flex justify-between py-0.5">
+													<span>{name} <span class="text-text-muted">x{e.quantity}</span></span>
+													<span class="font-medium text-accent">-{formatCurrency(price * e.quantity * (1 - DISCOUNT))}</span>
+												</div>
+											{/each}
+										</div>
+									{/if}
+									{#if pmtPurchases.length > 0}
+										<div>
+											<div class="mb-1.5 font-bold uppercase tracking-wider text-text-muted text-[10px]">Ressarcimentos</div>
+											{#each pmtPurchases as p}
+												<div class="flex justify-between py-0.5">
+													<span>{p.notes || 'Ressarcimento'} <span class="text-text-muted">{formatDate(p.date)}</span></span>
+													<span class="font-medium text-warning">+{formatCurrency(p.amount)}</span>
+												</div>
+											{/each}
+										</div>
+									{/if}
+									{#if pmt.pix_key_used}
+										<div class="text-[10px] text-text-muted">PIX usado: {pmt.pix_key_used}</div>
+									{/if}
+								</div>
+							{/if}
 						</div>
 					{/each}
 				</div>
