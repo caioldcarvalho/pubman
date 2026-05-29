@@ -124,7 +124,7 @@
 		const trimmed = pixKeyDraft.trim();
 		if (!trimmed) return;
 		savingPix = true;
-		await collaborators.update(collab.id, { pix_key: trimmed });
+		await collaborators.update(collab.id, { pix_key: normalizePixKey(trimmed) });
 		savingPix = false;
 		pixKeyDraft = '';
 		toast.success('Chave PIX salva');

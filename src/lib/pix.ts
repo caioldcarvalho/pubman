@@ -63,6 +63,48 @@ export function normalizePixKey(raw: string): string {
 	return digits || key;
 }
 
+export type PixKeyType = 'telefone' | 'cpf' | 'cnpj' | 'email' | 'aleatoria';
+
+export const PIX_KEY_TYPES: { value: PixKeyType; label: string }[] = [
+	{ value: 'telefone', label: 'Telefone' },
+	{ value: 'cpf', label: 'CPF' },
+	{ value: 'cnpj', label: 'CNPJ' },
+	{ value: 'email', label: 'E-mail' },
+	{ value: 'aleatoria', label: 'Aleatória' },
+];
+
+/** Formata a chave no formato canônico do PIX a partir de um tipo escolhido pelo usuário. */
+export function formatPixKeyByType(raw: string, type: PixKeyType): string {
+	const key = (raw ?? '').trim();
+	if (!key) return key;
+	switch (type) {
+		case 'email':
+			return key.toLowerCase().replace(/\s+/g, '');
+		case 'aleatoria':
+			return key.replace(/\s+/g, '');
+		case 'cpf':
+		case 'cnpj':
+			return key.replace(/\D/g, '');
+		case 'telefone': {
+			const d = key.replace(/\D/g, '');
+			if (key.startsWith('+')) return '+' + d;
+			if (d.startsWith('55') && d.length >= 12) return '+' + d; // já tem código do país
+			return '+55' + d;
+		}
+	}
+}
+
+/** Adivinha o tipo de uma chave já salva, para pré-selecionar o select ao editar. */
+export function inferPixKeyType(key: string): PixKeyType {
+	const k = (key ?? '').trim();
+	if (k.includes('@')) return 'email';
+	if (/[a-zA-Z]/.test(k)) return 'aleatoria';
+	const digits = k.replace(/\D/g, '');
+	if (k.startsWith('+') || digits.length >= 12) return 'telefone';
+	if (digits.length === 14) return 'cnpj';
+	return 'cpf';
+}
+
 export function buildPixBRCode(opts: {
 	pixKey: string;
 	amount: number;
