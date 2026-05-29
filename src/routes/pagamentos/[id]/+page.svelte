@@ -3,14 +3,14 @@
 	import { goto } from '$app/navigation';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { collaborators } from '$lib/stores/collaborators.svelte';
-	import { consumption } from '$lib/stores/consumption.svelte';
+	import { consumption, entryValue } from '$lib/stores/consumption.svelte';
 	import { purchases } from '$lib/stores/purchases.svelte';
 	import { schedule } from '$lib/stores/schedule.svelte';
 	import { products } from '$lib/stores/products.svelte';
 	import { payments } from '$lib/stores/payments.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatCurrency, formatDate, getDayName, todayISO } from '$lib/utils';
-	import { buildPixBRCode } from '$lib/pix';
+	import { buildPixBRCode, normalizePixKey } from '$lib/pix';
 
 	const collab = $derived(collaborators.getById(page.params.id));
 
@@ -29,11 +29,9 @@
 	);
 
 	const DISCOUNT = 0.20;
+	const getPrice = (id: string) => products.getById(id)?.price ?? 0;
 	const totalConsumed = $derived(
-		entries.reduce((sum, e) => {
-			const price = e.custom_price ?? (products.getById(e.product_id!)?.price ?? 0);
-			return sum + price * e.quantity * (1 - DISCOUNT);
-		}, 0)
+		entries.reduce((sum, e) => sum + entryValue(e, getPrice), 0)
 	);
 
 	const totalReimbursed = $derived(
@@ -89,6 +87,16 @@
 		try {
 			await navigator.clipboard.writeText(code);
 			toast.success('Código PIX copiado');
+		} catch {
+			toast.error('Não foi possível copiar');
+		}
+	}
+
+	async function copyPixKey() {
+		if (!collab?.pix_key) return;
+		try {
+			await navigator.clipboard.writeText(normalizePixKey(collab.pix_key));
+			toast.success('Chave PIX copiada');
 		} catch {
 			toast.error('Não foi possível copiar');
 		}
@@ -184,10 +192,9 @@
 				{#each entries as entry}
 					{@const product = entry.product_id ? products.getById(entry.product_id) : null}
 					{@const name = entry.custom_name ?? product?.name ?? '?'}
-					{@const price = entry.custom_price ?? product?.price ?? 0}
 					<div class="flex items-center justify-between px-4 py-3">
-						<div class="text-sm">{name} <span class="text-text-muted">x{entry.quantity}</span></div>
-						<span class="text-sm font-medium text-accent">{formatCurrency(price * entry.quantity * (1 - DISCOUNT))}</span>
+						<div class="text-sm">{name} <span class="text-text-muted">x{entry.quantity}{#if entry.split_count > 1} ÷{entry.split_count}{/if}</span></div>
+						<span class="text-sm font-medium text-accent">{formatCurrency(entryValue(entry, getPrice))}</span>
 					</div>
 				{/each}
 			</div>
@@ -230,7 +237,15 @@
 						</svg>
 					</button>
 				</div>
-				<p class="mb-3 text-center text-[11px] text-text-muted">Chave: {collab.pix_key}</p>
+				<button
+					onclick={copyPixKey}
+					class="mb-3 mx-auto flex items-center gap-1.5 text-[11px] text-text-muted transition-colors active:text-info"
+				>
+					<svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+					</svg>
+					Chave: {collab.pix_key} <span class="text-info">(toque p/ copiar)</span>
+				</button>
 			{:else}
 				<div class="mb-3 rounded-2xl bg-surface p-3 ring-1 ring-info/20">
 					<p class="mb-2 text-xs text-text-muted">Sem chave PIX cadastrada</p>

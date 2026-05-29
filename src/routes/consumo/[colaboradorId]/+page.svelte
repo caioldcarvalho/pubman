@@ -2,22 +2,16 @@
 	import { page } from '$app/state';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { collaborators } from '$lib/stores/collaborators.svelte';
-	import { consumption } from '$lib/stores/consumption.svelte';
+	import { consumption, entryValue } from '$lib/stores/consumption.svelte';
 	import { products } from '$lib/stores/products.svelte';
-	import { DISCOUNT } from '$lib/stores/consumption.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatCurrency, formatDate } from '$lib/utils';
 
 	const collab = $derived(collaborators.getById(page.params.colaboradorId));
 	const entries = $derived(collab ? consumption.getByCollaborator(collab.id) : []);
+	const getPrice = (id: string) => products.getById(id)?.price ?? 0;
 	const total = $derived(
-		entries.reduce((sum, e) => {
-			if (e.custom_price != null) {
-				return sum + e.custom_price * (1 - DISCOUNT) * e.quantity;
-			}
-			const p = products.getById(e.product_id!);
-			return sum + (p ? p.price * e.quantity : 0);
-		}, 0)
+		entries.reduce((sum, e) => sum + entryValue(e, getPrice), 0)
 	);
 
 	function buildShareText(): string {
@@ -26,10 +20,8 @@
 		for (const e of entries) {
 			const product = e.product_id ? products.getById(e.product_id) : null;
 			const name = e.custom_name ?? product?.name ?? '?';
-			const price = e.custom_price != null
-				? e.custom_price * (1 - DISCOUNT)
-				: (product?.price ?? 0);
-			lines.push(`• ${name} x${e.quantity} — ${formatCurrency(price * e.quantity)}`);
+			const split = e.split_count > 1 ? ` ÷${e.split_count}` : '';
+			lines.push(`• ${name} x${e.quantity}${split} — ${formatCurrency(entryValue(e, getPrice))}`);
 		}
 		lines.push('', `*Total: ${formatCurrency(total)}*`);
 		return lines.join('\n');
@@ -70,18 +62,18 @@
 			<div class="divide-y divide-surface-2 rounded-xl bg-surface">
 				{#each entries as entry}
 					{@const product = entry.product_id ? products.getById(entry.product_id) : null}
-					{@const price = entry.custom_price != null
-						? entry.custom_price * (1 - DISCOUNT)
-						: (product?.price ?? 0)}
 					<div class="flex items-center justify-between px-4 py-3">
 						<div>
 							<div class="text-sm font-medium">
 								{entry.custom_name ?? product?.name ?? '?'}
 								{#if entry.custom_name}<span class="text-xs text-text-muted"> (avulso)</span>{/if}
 							</div>
-							<div class="text-xs text-text-muted">{formatDate(entry.date)} &middot; {entry.quantity}x</div>
+							<div class="text-xs text-text-muted">
+								{formatDate(entry.date)} &middot; {entry.quantity}x
+								{#if entry.split_count > 1}<span class="text-accent"> &middot; ÷{entry.split_count}</span>{/if}
+							</div>
 						</div>
-						<span class="text-sm">{formatCurrency(price * entry.quantity)}</span>
+						<span class="text-sm">{formatCurrency(entryValue(entry, getPrice))}</span>
 					</div>
 				{/each}
 			</div>

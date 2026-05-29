@@ -3,7 +3,7 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import StarRating from '$lib/components/StarRating.svelte';
 	import { collaborators, ALL_ROLES, type Role } from '$lib/stores/collaborators.svelte';
-	import { consumption } from '$lib/stores/consumption.svelte';
+	import { consumption, entryValue } from '$lib/stores/consumption.svelte';
 	import { purchases } from '$lib/stores/purchases.svelte';
 	import { schedule } from '$lib/stores/schedule.svelte';
 	import { products } from '$lib/stores/products.svelte';
@@ -14,11 +14,9 @@
 	const collab = $derived(collaborators.getById(page.params.id));
 	const entries = $derived(collab ? consumption.getByCollaborator(collab.id) : []);
 	const DISCOUNT = 0.20;
+	const getPrice = (id: string) => products.getById(id)?.price ?? 0;
 	const total = $derived(
-		entries.reduce((sum, e) => {
-			const price = e.custom_price ?? (products.getById(e.product_id!)?.price ?? 0);
-			return sum + price * e.quantity * (1 - DISCOUNT);
-		}, 0)
+		entries.reduce((sum, e) => sum + entryValue(e, getPrice), 0)
 	);
 
 	let editing = $state(false);
@@ -431,14 +429,16 @@
 				{#each entries as entry}
 					{@const product = entry.product_id ? products.getById(entry.product_id) : null}
 					{@const name = entry.custom_name ?? product?.name ?? 'Produto removido'}
-					{@const price = entry.custom_price ?? product?.price ?? 0}
 					<div class="flex items-center justify-between px-4 py-3">
 						<div>
 							<div class="text-sm font-medium">{name}</div>
-							<div class="text-xs text-text-muted">{formatDate(entry.date)} &middot; {entry.quantity}x</div>
+							<div class="text-xs text-text-muted">
+								{formatDate(entry.date)} &middot; {entry.quantity}x
+								{#if entry.split_count > 1}<span class="text-accent"> &middot; dividido ÷{entry.split_count}</span>{/if}
+							</div>
 						</div>
 						<div class="flex items-center gap-3">
-							<span class="text-sm font-medium">{formatCurrency(price * entry.quantity * (1 - DISCOUNT))}</span>
+							<span class="text-sm font-medium">{formatCurrency(entryValue(entry, getPrice))}</span>
 							<button
 								onclick={async () => { await consumption.remove(entry.id); toast.info('Consumo removido'); }}
 								class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-accent-soft hover:text-accent"
@@ -569,10 +569,9 @@
 											{#each pmtConsumption as e}
 												{@const product = e.product_id ? products.getById(e.product_id) : null}
 												{@const name = e.custom_name ?? product?.name ?? 'Produto removido'}
-												{@const price = e.custom_price ?? product?.price ?? 0}
 												<div class="flex justify-between py-0.5">
-													<span>{name} <span class="text-text-muted">x{e.quantity}</span></span>
-													<span class="font-medium text-accent">-{formatCurrency(price * e.quantity * (1 - DISCOUNT))}</span>
+													<span>{name} <span class="text-text-muted">x{e.quantity}{#if e.split_count > 1} ÷{e.split_count}{/if}</span></span>
+													<span class="font-medium text-accent">-{formatCurrency(entryValue(e, getPrice))}</span>
 												</div>
 											{/each}
 										</div>

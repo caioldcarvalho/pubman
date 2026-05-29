@@ -11,80 +11,76 @@
 	const preselectedPerson = page.url.searchParams.get('person');
 
 	let step = $state<'person' | 'product' | 'custom' | 'done'>(preselectedPerson ? 'product' : 'person');
-	let selectedPerson = $state<string | null>(preselectedPerson);
+	let selectedPeople = $state<string[]>(preselectedPerson ? [preselectedPerson] : []);
 	let selectedCategory = $state<string | null>(null);
-	let lastAdded = $state<{ person: string; product: string; price: number } | null>(null);
+	let lastAdded = $state<{ people: string[]; product: string; price: number } | null>(null);
 	let customName = $state('');
 	let customPrice = $state('');
 
-	const person = $derived(selectedPerson ? collaborators.getById(selectedPerson) : null);
+	const selectedNames = $derived(
+		selectedPeople.map((id) => collaborators.getById(id)?.name ?? '').filter(Boolean),
+	);
 
-	function selectPerson(id: string) {
-		selectedPerson = id;
+	function togglePerson(id: string) {
+		if (selectedPeople.includes(id)) {
+			selectedPeople = selectedPeople.filter((p) => p !== id);
+		} else {
+			selectedPeople = [...selectedPeople, id];
+		}
+	}
+
+	function goToProducts() {
+		if (selectedPeople.length === 0) return;
 		step = 'product';
 		selectedCategory = null;
 	}
 
+	function finishAndReset(product: string, price: number) {
+		lastAdded = { people: [...selectedNames], product, price };
+		step = 'done';
+		setTimeout(() => {
+			step = 'person';
+			selectedPeople = [];
+			selectedCategory = null;
+			lastAdded = null;
+		}, 1300);
+	}
+
 	async function selectProduct(productId: string) {
 		const product = products.getById(productId);
-		if (!product || !selectedPerson) return;
+		if (!product || selectedPeople.length === 0) return;
 
-		await consumption.add({
-			collaborator_id: selectedPerson,
+		await consumption.addSplit(selectedPeople, {
 			product_id: productId,
 			quantity: 1,
 			date: todayISO(),
 		});
 
-		lastAdded = {
-			person: person?.name ?? '',
-			product: product.name,
-			price: product.price,
-		};
-
-		toast.success(`${product.name} adicionado para ${person?.name}`);
-
-		step = 'done';
-		setTimeout(() => {
-			step = 'person';
-			selectedPerson = null;
-			selectedCategory = null;
-			lastAdded = null;
-		}, 1200);
+		const who = selectedNames.length > 1 ? `dividido entre ${selectedNames.join(', ')}` : `para ${selectedNames[0]}`;
+		toast.success(`${product.name} ${who}`);
+		finishAndReset(product.name, product.price);
 	}
 
 	async function addCustomItem() {
 		const price = parseFloat(customPrice.replace(',', '.'));
-		if (!customName.trim() || !price || !selectedPerson) return;
+		if (!customName.trim() || !price || selectedPeople.length === 0) return;
 
 		// Store price * 1.25 so the existing 20% discount brings it back to the real value
 		const inflatedPrice = price / (1 - DISCOUNT);
 
-		await consumption.add({
-			collaborator_id: selectedPerson,
+		await consumption.addSplit(selectedPeople, {
 			quantity: 1,
 			date: todayISO(),
 			custom_name: customName.trim(),
 			custom_price: inflatedPrice,
 		});
 
-		lastAdded = {
-			person: person?.name ?? '',
-			product: customName.trim(),
-			price,
-		};
-
-		toast.success(`${customName.trim()} adicionado para ${person?.name}`);
+		const name = customName.trim();
+		const who = selectedNames.length > 1 ? `dividido entre ${selectedNames.join(', ')}` : `para ${selectedNames[0]}`;
+		toast.success(`${name} ${who}`);
 		customName = '';
 		customPrice = '';
-
-		step = 'done';
-		setTimeout(() => {
-			step = 'person';
-			selectedPerson = null;
-			selectedCategory = null;
-			lastAdded = null;
-		}, 1200);
+		finishAndReset(name, price);
 	}
 
 	function reset() {
@@ -96,8 +92,6 @@
 			selectedCategory = null;
 		} else {
 			step = 'person';
-			selectedPerson = null;
-			selectedCategory = null;
 		}
 	}
 </script>
@@ -110,15 +104,22 @@
 	{/if}
 </PageHeader>
 
-<div class="px-4 py-4">
+<div class="px-4 py-4 pb-24">
 	{#if step === 'person'}
-		<p class="mb-3 text-sm text-text-muted">Quem consumiu?</p>
+		<p class="mb-3 text-sm text-text-muted">Quem consumiu? <span class="text-text-muted/70">(toque mais de um para dividir)</span></p>
 		<div class="stagger grid grid-cols-2 gap-2">
 			{#each collaborators.active as collab}
+				{@const selected = selectedPeople.includes(collab.id)}
 				<button
-					onclick={() => selectPerson(collab.id)}
-					class="pressable rounded-2xl bg-surface p-4 text-center shadow-md shadow-black/10"
+					onclick={() => togglePerson(collab.id)}
+					class="pressable relative rounded-2xl p-4 text-center shadow-md shadow-black/10 transition-all
+						{selected ? 'bg-accent-soft ring-2 ring-accent' : 'bg-surface'}"
 				>
+					{#if selected}
+						<div class="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-white">
+							<svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+						</div>
+					{/if}
 					<div class="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-surface-2 to-surface-3 text-lg font-bold">
 						{collab.name.slice(0, 2).toUpperCase()}
 					</div>
@@ -128,7 +129,10 @@
 		</div>
 
 	{:else if step === 'product'}
-		<p class="mb-3 text-sm text-text-muted">O que <strong class="text-text">{person?.name}</strong> consumiu?</p>
+		<p class="mb-3 text-sm text-text-muted">
+			O que <strong class="text-text">{selectedNames.join(', ')}</strong> consumiu?
+			{#if selectedPeople.length > 1}<span class="text-accent">(dividido entre {selectedPeople.length})</span>{/if}
+		</p>
 
 		{#if !selectedCategory}
 			<div class="stagger grid grid-cols-2 gap-2">
@@ -155,14 +159,19 @@
 						class="flex w-full items-center justify-between px-4 py-3.5 text-left transition-colors active:bg-surface-2"
 					>
 						<span class="text-sm">{product.name}</span>
-						<span class="text-sm font-medium text-accent">{formatCurrency(product.price)}</span>
+						<span class="text-sm font-medium text-accent">
+							{formatCurrency(product.price)}{#if selectedPeople.length > 1}<span class="text-text-muted"> · {formatCurrency(product.price / selectedPeople.length)}/un</span>{/if}
+						</span>
 					</button>
 				{/each}
 			</div>
 		{/if}
 
 	{:else if step === 'custom'}
-		<p class="mb-3 text-sm text-text-muted">Item avulso para <strong class="text-text">{person?.name}</strong></p>
+		<p class="mb-3 text-sm text-text-muted">
+			Item avulso para <strong class="text-text">{selectedNames.join(', ')}</strong>
+			{#if selectedPeople.length > 1}<span class="text-accent">(dividido entre {selectedPeople.length})</span>{/if}
+		</p>
 
 		<div class="space-y-3 rounded-2xl bg-surface p-4 shadow-md shadow-black/10">
 			<div>
@@ -176,7 +185,7 @@
 				/>
 			</div>
 			<div>
-				<label for="custom-price" class="mb-1 block text-xs text-text-muted">Valor (R$)</label>
+				<label for="custom-price" class="mb-1 block text-xs text-text-muted">Valor total (R$)</label>
 				<input
 					id="custom-price"
 					type="text"
@@ -204,10 +213,26 @@
 			</div>
 			{#if lastAdded}
 				<p class="animate-in text-center text-lg font-semibold">{lastAdded.product}</p>
-				<p class="animate-in text-sm text-text-muted" style="animation-delay: 80ms">
-					{lastAdded.person} &middot; {formatCurrency(lastAdded.price)}
+				<p class="animate-in text-center text-sm text-text-muted" style="animation-delay: 80ms">
+					{#if lastAdded.people.length > 1}
+						dividido entre {lastAdded.people.join(', ')} &middot; {formatCurrency(lastAdded.price)}
+					{:else}
+						{lastAdded.people[0]} &middot; {formatCurrency(lastAdded.price)}
+					{/if}
 				</p>
 			{/if}
 		</div>
 	{/if}
 </div>
+
+<!-- Sticky continue bar on the person step -->
+{#if step === 'person' && selectedPeople.length > 0}
+	<div class="fixed inset-x-0 bottom-16 z-10 mx-auto max-w-lg px-4 pb-3">
+		<button
+			onclick={goToProducts}
+			class="pressable w-full rounded-2xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/30"
+		>
+			Continuar{selectedPeople.length > 1 ? ` · dividir entre ${selectedPeople.length}` : ` · ${selectedNames[0]}`}
+		</button>
+	</div>
+{/if}

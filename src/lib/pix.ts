@@ -24,6 +24,45 @@ function sanitize(str: string, max: number): string {
 		.slice(0, max);
 }
 
+/**
+ * Normaliza a chave PIX para o formato exato que o BACEN/bancos esperam no
+ * BR Code. A maior causa de "PIX recusado" é a chave salva com pontuação
+ * (CPF "123.456.789-00", telefone "(11) 99999-9999") — aqui ela é limpa.
+ *
+ * Regras:
+ *  - e-mail            → minúsculo, sem espaços
+ *  - chave aleatória   → mantém (UUID com hífens), só tira espaços
+ *  - telefone (com +)  → "+" seguido só de dígitos
+ *  - CPF (11 díg)      → só dígitos
+ *  - CNPJ (14 díg)     → só dígitos
+ *  - telefone BR (10/11 díg, sem +) → "+55" + dígitos
+ */
+export function normalizePixKey(raw: string): string {
+	const key = (raw ?? '').trim();
+	if (!key) return key;
+
+	// E-mail
+	if (key.includes('@')) return key.toLowerCase().replace(/\s+/g, '');
+
+	// Chave aleatória (contém letras e não é e-mail): mantém como está
+	if (/[a-zA-Z]/.test(key)) return key.replace(/\s+/g, '');
+
+	const hasPlus = key.startsWith('+');
+	const digits = key.replace(/\D/g, '');
+
+	// Já veio com código de país (ex: +55 11 99999-9999)
+	if (hasPlus) return '+' + digits;
+
+	// CPF (11) e CNPJ (14) vão só com dígitos
+	if (digits.length === 11 || digits.length === 14) return digits;
+
+	// Telefone brasileiro sem código de país (DDD + número)
+	if (digits.length === 10 || digits.length === 9) return '+55' + digits;
+
+	// Não reconhecido: devolve só os dígitos (melhor que pontuação)
+	return digits || key;
+}
+
 export function buildPixBRCode(opts: {
 	pixKey: string;
 	amount: number;
@@ -31,7 +70,7 @@ export function buildPixBRCode(opts: {
 	merchantCity?: string;
 	txid?: string;
 }): string {
-	const key = opts.pixKey.trim();
+	const key = normalizePixKey(opts.pixKey);
 	const amount = opts.amount > 0 ? opts.amount.toFixed(2) : '';
 	const name = sanitize(opts.merchantName || 'PAGAMENTO', 25) || 'PAGAMENTO';
 	const city = sanitize(opts.merchantCity || 'BRASIL', 15) || 'BRASIL';

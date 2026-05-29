@@ -10,9 +10,23 @@ export interface ConsumptionEntry {
 	custom_name?: string | null;
 	custom_price?: number | null;
 	payment_id: string | null;
+	split_count: number;
 }
 
 export const DISCOUNT = 0.20;
+
+/**
+ * Net value an entry costs its collaborator: price * qty, minus the 20% discount,
+ * divided by how many people split it. Single source of truth for consumption value.
+ */
+export function entryValue(
+	entry: Pick<ConsumptionEntry, 'custom_price' | 'product_id' | 'quantity' | 'split_count'>,
+	getPrice: (id: string) => number,
+): number {
+	const price = entry.custom_price ?? getPrice(entry.product_id!);
+	const splits = entry.split_count && entry.split_count > 1 ? entry.split_count : 1;
+	return (price * entry.quantity * (1 - DISCOUNT)) / splits;
+}
 
 class ConsumptionStore {
 	list = $state<ConsumptionEntry[]>([]);
@@ -42,8 +56,7 @@ class ConsumptionStore {
 		const entries = this.getByCollaborator(collaboratorId);
 		let total = 0;
 		for (const c of entries) {
-			const price = c.custom_price ?? priceGetter(c.product_id!);
-			total += c.quantity * price * (1 - DISCOUNT);
+			total += entryValue(c, priceGetter);
 		}
 		return total;
 	}
@@ -64,9 +77,31 @@ class ConsumptionStore {
 		date: string;
 		custom_name?: string;
 		custom_price?: number;
+		split_count?: number;
 	}) {
 		const { data } = await supabase.from('consumption').insert(entry).select().single();
 		if (data) this.list.unshift(data);
+	}
+
+	/** Add the same item for several collaborators at once, splitting the value equally. */
+	async addSplit(
+		collaboratorIds: string[],
+		entry: {
+			product_id?: string | null;
+			quantity: number;
+			date: string;
+			custom_name?: string;
+			custom_price?: number;
+		},
+	) {
+		const split_count = collaboratorIds.length;
+		const rows = collaboratorIds.map((collaborator_id) => ({
+			...entry,
+			collaborator_id,
+			split_count,
+		}));
+		const { data } = await supabase.from('consumption').insert(rows).select();
+		if (data) this.list.unshift(...data);
 	}
 
 	async remove(id: string) {
