@@ -13,6 +13,7 @@
 	const dayCounts = $derived(period ? schedule.getAssignmentCountsByDay(period.id) : new Map());
 
 	let tab = $state<'availability' | 'schedule'>('availability');
+	let availView = $state<'dia' | 'colab'>('dia');
 	let area = $state<'salao' | 'cozinha'>('salao');
 	let showDeleteConfirm = $state(false);
 	let editing = $state(false);
@@ -172,11 +173,60 @@
 
 	{#if tab === 'availability'}
 		<div class="px-4 py-4">
-			<p class="mb-4 text-sm text-text-muted">Toque nas datas para alternar disponibilidade.</p>
+			<!-- View mode toggle -->
+			<div class="mb-4 flex gap-2">
+				<button
+					onclick={() => (availView = 'dia')}
+					class="rounded-xl px-3 py-1.5 text-xs font-medium transition-all
+						{availView === 'dia' ? 'bg-accent text-white shadow-md shadow-accent/20' : 'bg-surface-2 text-text-muted'}"
+				>
+					Por dia
+				</button>
+				<button
+					onclick={() => (availView = 'colab')}
+					class="rounded-xl px-3 py-1.5 text-xs font-medium transition-all
+						{availView === 'colab' ? 'bg-accent text-white shadow-md shadow-accent/20' : 'bg-surface-2 text-text-muted'}"
+				>
+					Por colaborador
+				</button>
+			</div>
 
 			{#if areaFreelancers.length === 0}
 				<p class="py-8 text-center text-sm text-text-muted">Nenhum colaborador de {area === 'salao' ? 'salão' : 'cozinha'} cadastrado.</p>
+			{:else if availView === 'dia'}
+				<p class="mb-4 text-sm text-text-muted">Para cada dia, toque nos colaboradores disponíveis.</p>
+				<div class="stagger space-y-5">
+					{#each dates as schedDate}
+						{@const dayAvail = schedule.getAvailability(schedDate.id)}
+						{@const availCount = areaFreelancers.filter((c) => dayAvail.some((a) => a.collaborator_id === c.id && a.available)).length}
+						<div>
+							<div class="mb-2 flex items-center gap-2">
+								<span class="rounded-lg bg-surface-2 px-2 py-1 text-xs font-bold {schedDate.day_of_week === 6 ? 'bg-accent/20 text-accent' : ''}">
+									{dayLabels[schedDate.day_of_week] ?? getDayName(schedDate.date)}
+								</span>
+								<span class="text-sm font-semibold">{formatDate(schedDate.date)}</span>
+								<span class="rounded-full bg-success/15 px-2 py-0.5 text-xs font-bold text-success">
+									{availCount} disp.
+								</span>
+							</div>
+							<div class="grid grid-cols-2 gap-1.5">
+								{#each areaFreelancers as collab}
+									{@const avail = dayAvail.find((a) => a.collaborator_id === collab.id)}
+									{@const isAvailable = avail?.available ?? false}
+									<button
+										onclick={() => toggleAvail(schedDate.id, collab.id, isAvailable)}
+										class="pressable rounded-xl px-3 py-2 text-left text-sm font-medium transition-all
+											{isAvailable ? 'bg-success/15 text-success ring-1 ring-success/30' : 'bg-surface text-text-muted ring-1 ring-surface-2'}"
+									>
+										{collab.name}
+									</button>
+								{/each}
+							</div>
+						</div>
+					{/each}
+				</div>
 			{:else}
+				<p class="mb-4 text-sm text-text-muted">Toque nas datas para alternar disponibilidade.</p>
 				<div class="stagger space-y-5">
 					{#each areaFreelancers as collab}
 						<div class="rounded-2xl bg-surface p-4 shadow-md shadow-black/10">
