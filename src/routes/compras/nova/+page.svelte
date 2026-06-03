@@ -28,10 +28,14 @@
 	}
 
 	async function save() {
-		if (amount <= 0) return;
-		await purchases.add({ amount, date, notes: finalNotes });
+		const v = parseFloat(String(amount).replace(',', '.'));
+		if (!Number.isFinite(v) || v <= 0 || v > 1_000_000) {
+			toast.error('Valor inválido');
+			return;
+		}
+		await purchases.add({ amount: v, date, notes: finalNotes });
 		if (pickedIds.length > 0) await tasks.removeMany(pickedIds);
-		toast.success(`Compra de ${formatCurrency(amount)} registrada`);
+		toast.success(`Compra de ${formatCurrency(v)} registrada`);
 		goto('/compras');
 	}
 </script>
@@ -46,6 +50,7 @@
 				bind:value={amount}
 				type="number"
 				step="0.01"
+				min="0"
 				class="w-full rounded-2xl bg-surface px-4 py-3 text-lg font-semibold text-text outline-none shadow-md shadow-black/10 transition-shadow focus:ring-2 focus:ring-accent/50"
 				placeholder="0.00"
 			/>
