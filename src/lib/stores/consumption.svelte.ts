@@ -1,4 +1,5 @@
 import { supabase } from '$lib/supabase';
+import { round2 } from '$lib/utils';
 
 export interface ConsumptionEntry {
 	id: string;
@@ -25,7 +26,7 @@ export function entryValue(
 ): number {
 	const price = entry.custom_price ?? getPrice(entry.product_id!);
 	const splits = entry.split_count && entry.split_count > 1 ? entry.split_count : 1;
-	return (price * entry.quantity * (1 - DISCOUNT)) / splits;
+	return round2((price * entry.quantity * (1 - DISCOUNT)) / splits);
 }
 
 class ConsumptionStore {

@@ -41,8 +41,16 @@
 	const net = $derived(totalEarned - totalConsumed + totalReimbursed);
 
 	async function setRateOverride(assignmentId: string, value: string) {
-		const numVal = parseFloat(value);
-		await schedule.updateAssignmentRate(assignmentId, isNaN(numVal) ? null : numVal);
+		if (value.trim() === '') {
+			await schedule.updateAssignmentRate(assignmentId, null);
+			return;
+		}
+		const numVal = parseFloat(value.replace(',', '.'));
+		if (!Number.isFinite(numVal) || numVal < 0 || numVal > 1_000_000) {
+			toast.error('Valor inválido');
+			return;
+		}
+		await schedule.updateAssignmentRate(assignmentId, numVal);
 	}
 
 	async function markPaid() {
