@@ -10,6 +10,9 @@ concurrency:
   group: netlify-production
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -36,6 +39,4 @@ jobs:
           test -n "$PUBLIC_SUPABASE_ANON_KEY"
 
       - name: Deploy production site
-        env:
-          DEPLOY_MSG: ${{ github.event.head_commit.message }}
-        run: npx netlify deploy --build --prod --message "${DEPLOY_MSG}"
+        run: npx netlify deploy --build --prod
