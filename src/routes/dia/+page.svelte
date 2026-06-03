@@ -180,7 +180,7 @@
 			<p class="rounded-xl bg-surface px-4 py-3 text-center text-sm text-text-muted">Nenhum evento</p>
 		{:else if dayEvents.length > 0}
 			<div class="space-y-2">
-				{#each dayEvents as evt}
+				{#each dayEvents as evt (evt.id)}
 					<div class="rounded-2xl bg-surface p-4 shadow-md shadow-black/10 ring-1 ring-accent/10">
 						<div class="flex items-start justify-between gap-2">
 							<div class="flex-1">
@@ -225,7 +225,7 @@
 				<h2 class="text-xs font-bold uppercase tracking-wider text-text-muted">Escalados ({assignedCollabs.length})</h2>
 			</div>
 			<div class="divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
-				{#each assignedCollabs as person}
+				{#each assignedCollabs as person (person.id)}
 					<div class="flex items-center justify-between px-4 py-3">
 						<div class="flex items-center gap-3">
 							<span class="flex h-8 w-8 items-center justify-center rounded-full bg-success/15 text-xs font-bold text-success">
@@ -256,7 +256,7 @@
 			<p class="rounded-xl bg-surface px-4 py-6 text-center text-sm text-text-muted">Todos já estão escalados nesse dia</p>
 		{:else}
 			<div class="grid grid-cols-2 gap-2">
-				{#each available as collab}
+				{#each available as collab (collab.id)}
 					<button
 						onclick={() => addCollab(collab.id)}
 						class="pressable flex items-center gap-2 rounded-xl bg-surface px-3 py-2.5 text-sm font-medium shadow-sm shadow-black/5 transition-all active:bg-surface-2"

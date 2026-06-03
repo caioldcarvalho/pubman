@@ -60,7 +60,7 @@
 			<p class="py-8 text-center text-sm text-text-muted">Nenhum consumo registrado</p>
 		{:else}
 			<div class="divide-y divide-surface-2 rounded-xl bg-surface">
-				{#each entries as entry}
+				{#each entries as entry (entry.id)}
 					{@const product = entry.product_id ? products.getById(entry.product_id) : null}
 					<div class="flex items-center justify-between px-4 py-3">
 						<div>

@@ -102,7 +102,7 @@
 
 	// Calendar month navigation
 	let calendarMonth = $state(new Date());
-	const calendarDays = $derived(() => {
+	const calendarDays = $derived.by(() => {
 		const year = calendarMonth.getFullYear();
 		const month = calendarMonth.getMonth();
 		const firstDay = new Date(year, month, 1);
@@ -414,7 +414,7 @@
 					<span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
 				</div>
 				<div class="grid grid-cols-7 gap-0.5 text-center text-xs">
-					{#each calendarDays() as day}
+					{#each calendarDays as day (day.date)}
 						<span
 							class="flex h-8 w-8 items-center justify-center rounded-full mx-auto
 								{!day.inMonth ? 'text-text-muted/30' : ''}
@@ -429,7 +429,7 @@
 			<!-- Assignment list -->
 			{#if allAssignments.length > 0}
 				<div class="divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
-					{#each allAssignments as a}
+					{#each allAssignments as a (a.id)}
 						{@const hours = getHoursWorked(a.check_in, a.check_out)}
 						{@const effective = collab ? getEffectiveRate(a, collab.base_rate) : 0}
 						{#if editingAssignment === a.id}
@@ -488,7 +488,7 @@
 			<p class="py-10 text-center text-sm text-text-muted">Nenhum consumo registrado</p>
 		{:else}
 			<div class="stagger divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
-				{#each entries as entry}
+				{#each entries as entry (entry.id)}
 					{@const product = entry.product_id ? products.getById(entry.product_id) : null}
 					{@const name = entry.custom_name ?? product?.name ?? 'Produto removido'}
 					<div class="flex items-center justify-between px-4 py-3">
@@ -555,7 +555,7 @@
 				<p class="text-center text-sm text-text-muted py-4">Nenhum ressarcimento pendente</p>
 			{:else}
 				<div class="divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
-					{#each reimbursements as p}
+					{#each reimbursements as p (p.id)}
 						<div class="flex items-center justify-between px-4 py-3">
 							<div>
 								<div class="text-sm font-medium">{p.notes || 'Ressarcimento'}</div>
@@ -590,7 +590,7 @@
 				<p class="text-center text-sm text-text-muted py-4">Nenhum pagamento registrado</p>
 			{:else}
 				<div class="divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
-					{#each paymentHistory as pmt}
+					{#each paymentHistory as pmt (pmt.id)}
 						{@const expanded = expandedPayment === pmt.id}
 						{@const pmtAssignments = schedule.getAssignmentsByPayment(pmt.id)}
 						{@const pmtConsumption = consumption.getByPayment(pmt.id)}
@@ -616,7 +616,7 @@
 									{#if pmtAssignments.length > 0}
 										<div>
 											<div class="mb-1.5 font-bold uppercase tracking-wider text-text-muted text-[10px]">Dias pagos</div>
-											{#each pmtAssignments as a}
+											{#each pmtAssignments as a (a.id)}
 												{@const sd = schedule.getDateById(a.date_id)}
 												<div class="flex justify-between py-0.5">
 													<span>{sd ? `${getDayName(sd.date)} ${formatDate(sd.date)}` : 'dia removido'}</span>
@@ -628,7 +628,7 @@
 									{#if pmtConsumption.length > 0}
 										<div>
 											<div class="mb-1.5 font-bold uppercase tracking-wider text-text-muted text-[10px]">Consumo descontado</div>
-											{#each pmtConsumption as e}
+											{#each pmtConsumption as e (e.id)}
 												{@const product = e.product_id ? products.getById(e.product_id) : null}
 												{@const name = e.custom_name ?? product?.name ?? 'Produto removido'}
 												<div class="flex justify-between py-0.5">
@@ -641,7 +641,7 @@
 									{#if pmtPurchases.length > 0}
 										<div>
 											<div class="mb-1.5 font-bold uppercase tracking-wider text-text-muted text-[10px]">Ressarcimentos</div>
-											{#each pmtPurchases as p}
+											{#each pmtPurchases as p (p.id)}
 												<div class="flex justify-between py-0.5">
 													<span>{p.notes || 'Ressarcimento'} <span class="text-text-muted">{formatDate(p.date)}</span></span>
 													<span class="font-medium text-warning">+{formatCurrency(p.amount)}</span>

@@ -196,7 +196,7 @@
 			{:else if availView === 'dia'}
 				<p class="mb-4 text-sm text-text-muted">Para cada dia, toque nos colaboradores disponíveis.</p>
 				<div class="stagger space-y-5">
-					{#each dates as schedDate}
+					{#each dates as schedDate (schedDate.id)}
 						{@const dayAvail = schedule.getAvailability(schedDate.id)}
 						{@const availCount = areaFreelancers.filter((c) => dayAvail.some((a) => a.collaborator_id === c.id && a.available)).length}
 						<div>
@@ -210,7 +210,7 @@
 								</span>
 							</div>
 							<div class="grid grid-cols-2 gap-1.5">
-								{#each areaFreelancers as collab}
+								{#each areaFreelancers as collab (collab.id)}
 									{@const avail = dayAvail.find((a) => a.collaborator_id === collab.id)}
 									{@const isAvailable = avail?.available ?? false}
 									<button
@@ -228,11 +228,11 @@
 			{:else}
 				<p class="mb-4 text-sm text-text-muted">Toque nas datas para alternar disponibilidade.</p>
 				<div class="stagger space-y-5">
-					{#each areaFreelancers as collab}
+					{#each areaFreelancers as collab (collab.id)}
 						<div class="rounded-2xl bg-surface p-4 shadow-md shadow-black/10">
 							<div class="mb-3 text-sm font-semibold">{collab.name}</div>
 							<div class="flex flex-wrap gap-1.5">
-								{#each dates as schedDate}
+								{#each dates as schedDate (schedDate.id)}
 									{@const avail = schedule.getAvailability(schedDate.id).find((a) => a.collaborator_id === collab.id)}
 									{@const isAvailable = avail?.available ?? false}
 									<button
@@ -263,7 +263,7 @@
 						<span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-full bg-accent"></span> sáb</span>
 					</div>
 					<div class="flex flex-wrap gap-1.5">
-						{#each areaFreelancers as collab}
+						{#each areaFreelancers as collab (collab.id)}
 							{@const dc = dayCounts.get(collab.id) ?? { fri: 0, sat: 0, other: 0 }}
 							{@const total = dc.fri + dc.sat + dc.other}
 							<div class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium
@@ -278,7 +278,7 @@
 			{/if}
 
 			<div class="stagger space-y-5">
-				{#each dates as schedDate}
+				{#each dates as schedDate (schedDate.id)}
 					{@const available = schedule.getAvailableCollaborators(schedDate.id)}
 					{@const assigned = schedule.getAssignments(schedDate.id)}
 					{@const isFull = assigned.length >= schedDate.required_count}
@@ -296,7 +296,7 @@
 							<p class="rounded-xl bg-surface px-4 py-3 text-center text-xs text-text-muted">Ninguém disponível</p>
 						{:else}
 							<div class="grid grid-cols-2 gap-1.5">
-								{#each areaFreelancers as collab}
+								{#each areaFreelancers as collab (collab.id)}
 									{@const isAvail = available.some((a) => a.collaborator_id === collab.id)}
 									{@const isAssigned = schedule.isAssigned(schedDate.id, collab.id)}
 									{@const dc = dayCounts.get(collab.id) ?? { fri: 0, sat: 0, other: 0 }}

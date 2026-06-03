@@ -14,7 +14,7 @@
 	let showReimb = $state(true);
 
 	// Recent days overview: last 5 scheduled days that had assignments
-	const recentDays = $derived(() => {
+	const recentDays = $derived.by(() => {
 		const today = todayISO();
 		const pastDates = schedule.dates
 			.filter((d) => d.date <= today)
@@ -168,11 +168,11 @@
 	</div>
 
 	<!-- Recent days overview -->
-	{#if recentDays().length > 0}
+	{#if recentDays.length > 0}
 		<div class="mb-5">
 			<h2 class="mb-2 text-xs font-bold uppercase tracking-wider text-text-muted">Últimas noites</h2>
 			<div class="space-y-1.5">
-				{#each recentDays() as day}
+				{#each recentDays as day (day.date.id)}
 					<div class="rounded-xl bg-surface px-3 py-2.5 shadow-sm shadow-black/5">
 						<div class="mb-1 flex items-center gap-2">
 							<span class="text-xs font-bold">{getDayName(day.date.date)}</span>
@@ -180,7 +180,7 @@
 							<span class="ml-auto rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-bold">{day.assigned.length}</span>
 						</div>
 						<div class="flex flex-wrap gap-1">
-							{#each day.assigned as person}
+							{#each day.assigned as person (person.id)}
 								<a href="/colaboradores/{person.id}" class="rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium transition-colors hover:bg-surface-3">
 									{person.name}
 								</a>
@@ -212,7 +212,7 @@
 		</div>
 
 		<div class="stagger space-y-2">
-			{#each allItems as item}
+			{#each allItems as item (item.id)}
 				<div class="flex items-center gap-2 rounded-2xl bg-surface px-3 py-3.5 shadow-md shadow-black/10
 					{excluded.has(item.id) ? 'opacity-40' : ''}">
 					<!-- Checkbox -->

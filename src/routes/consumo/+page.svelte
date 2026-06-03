@@ -108,7 +108,7 @@
 	{#if step === 'person'}
 		<p class="mb-3 text-sm text-text-muted">Quem consumiu? <span class="text-text-muted/70">(toque mais de um para dividir)</span></p>
 		<div class="stagger grid grid-cols-2 gap-2">
-			{#each collaborators.active as collab}
+			{#each collaborators.active as collab (collab.id)}
 				{@const selected = selectedPeople.includes(collab.id)}
 				<button
 					onclick={() => togglePerson(collab.id)}
@@ -153,7 +153,7 @@
 			</div>
 		{:else}
 			<div class="stagger divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
-				{#each products.getByCategory(selectedCategory) as product}
+				{#each products.getByCategory(selectedCategory) as product (product.id)}
 					<button
 						onclick={() => selectProduct(product.id)}
 						class="flex w-full items-center justify-between px-4 py-3.5 text-left transition-colors active:bg-surface-2"
