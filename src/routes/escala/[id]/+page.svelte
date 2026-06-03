@@ -9,6 +9,11 @@
 
 	const period = $derived(schedule.periods.find((p) => p.id === page.params.id));
 	const dates = $derived(period ? schedule.getDatesByPeriod(period.id) : []);
+
+	// availability é carregada sob demanda (não vem no boot) — só esta tela a usa.
+	$effect(() => {
+		if (period) schedule.loadAvailabilityForPeriod(period.id);
+	});
 	const assignmentCounts = $derived(period ? schedule.getAssignmentCountByCollaborator(period.id) : new Map());
 	const dayCounts = $derived(period ? schedule.getAssignmentCountsByDay(period.id) : new Map());
 
