@@ -16,6 +16,13 @@
 	const entries = $derived(collab ? consumption.getByCollaborator(collab.id) : []);
 	const DISCOUNT = 0.20;
 	const getPrice = (id: string) => products.getById(id)?.price ?? 0;
+
+	// Validate a monetary/rate value. Returns the parsed number or null if invalid.
+	function parseMoney(raw: unknown): number | null {
+		const v = parseFloat(String(raw).replace(',', '.'));
+		if (!Number.isFinite(v) || v < 0 || v > 1_000_000) return null;
+		return v;
+	}
 	const total = $derived(
 		entries.reduce((sum, e) => sum + entryValue(e, getPrice), 0)
 	);
@@ -143,7 +150,14 @@
 
 	async function saveAssignment() {
 		if (!editingAssignment || !collab) return;
-		const rateOverride = editAssignRate === collab.base_rate ? null : editAssignRate;
+		// Empty rate => clear override (use base rate); present value must be valid.
+		const isEmpty = editAssignRate === null || String(editAssignRate).trim() === '';
+		const rate = isEmpty ? null : parseMoney(editAssignRate);
+		if (!isEmpty && rate === null) {
+			toast.error('Valor inválido');
+			return;
+		}
+		const rateOverride = rate === null || rate === collab.base_rate ? null : rate;
 		await schedule.updateAssignmentRate(editingAssignment, rateOverride);
 		await schedule.updateAssignmentTimes(editingAssignment, editAssignIn || null, editAssignOut || null);
 		toast.success('Atualizado');
@@ -174,8 +188,13 @@
 
 	async function confirmAddDay() {
 		if (!collab) return;
+		const rate = parseMoney(addDayRate);
+		if (rate === null) {
+			toast.error('Valor inválido');
+			return;
+		}
 		try {
-			const rateOverride = addDayRate === collab.base_rate ? null : addDayRate;
+			const rateOverride = rate === collab.base_rate ? null : rate;
 			await schedule.addRetroactiveAssignment(
 				collab.id,
 				addDayDate,
@@ -204,9 +223,14 @@
 	let reimbDate = $state(todayISO());
 
 	async function addReimbursement() {
-		if (!collab || reimbAmount <= 0) return;
+		if (!collab) return;
+		const amount = parseMoney(reimbAmount);
+		if (amount === null || amount <= 0) {
+			toast.error('Valor inválido');
+			return;
+		}
 		await purchases.add({
-			amount: reimbAmount,
+			amount,
 			date: reimbDate,
 			notes: reimbNotes,
 			collaborator_id: collab.id,
@@ -225,8 +249,13 @@
 
 	async function saveRate() {
 		if (!collab) return;
-		await collaborators.update(collab.id, { base_rate: editRate });
-		toast.success(`Valor atualizado para ${formatCurrency(editRate)}`);
+		const rate = parseMoney(editRate);
+		if (rate === null) {
+			toast.error('Valor inválido');
+			return;
+		}
+		await collaborators.update(collab.id, { base_rate: rate });
+		toast.success(`Valor atualizado para ${formatCurrency(rate)}`);
 		editing = false;
 	}
 
@@ -310,6 +339,7 @@
 						<input
 							bind:value={editRate}
 							type="number"
+							min="0"
 							class="w-24 rounded-xl bg-surface-2 px-3 py-1.5 text-right text-sm outline-none focus:ring-2 focus:ring-accent/50"
 						/>
 						<button onclick={saveRate} class="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white">Salvar</button>
@@ -380,7 +410,7 @@
 					</div>
 					<div class="flex items-center gap-2">
 						<label class="text-xs text-text-muted">Valor</label>
-						<input type="number" bind:value={addDayRate} class="w-24 rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
+						<input type="number" min="0" bind:value={addDayRate} class="w-24 rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
 					</div>
 					<div class="flex items-center gap-2">
 						<label class="text-xs text-text-muted">Entrada</label>
@@ -440,7 +470,7 @@
 								</div>
 								<div class="flex items-center gap-2">
 									<label class="text-[10px] text-text-muted">Valor</label>
-									<input type="number" bind:value={editAssignRate} class="w-20 rounded-lg bg-surface-2 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-accent/50" />
+									<input type="number" min="0" bind:value={editAssignRate} class="w-20 rounded-lg bg-surface-2 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-accent/50" />
 								</div>
 								<div class="flex items-center gap-2">
 									<label class="text-[10px] text-text-muted">Entrada</label>
@@ -534,7 +564,7 @@
 				<div class="mb-3 rounded-2xl bg-surface p-4 shadow-lg shadow-black/20 ring-1 ring-accent/20 space-y-3">
 					<div class="flex items-center gap-2">
 						<label class="text-xs text-text-muted">Valor</label>
-						<input type="number" bind:value={reimbAmount} step="0.01" class="w-28 rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
+						<input type="number" bind:value={reimbAmount} step="0.01" min="0" class="w-28 rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
 					</div>
 					<div class="flex items-center gap-2">
 						<label class="text-xs text-text-muted">Data</label>

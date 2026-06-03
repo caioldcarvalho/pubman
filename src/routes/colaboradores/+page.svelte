@@ -23,7 +23,12 @@
 
 	async function addCollaborator() {
 		if (!newName.trim() || newRoles.length === 0) return;
-		await collaborators.add({ name: newName.trim(), roles: newRoles, base_rate: newRate, stars: 3, active: true, fixed: newFixed });
+		const rate = parseFloat(String(newRate).replace(',', '.'));
+		if (!Number.isFinite(rate) || rate < 0 || rate > 1_000_000) {
+			toast.error('Valor inválido');
+			return;
+		}
+		await collaborators.add({ name: newName.trim(), roles: newRoles, base_rate: rate, stars: 3, active: true, fixed: newFixed });
 		toast.success(`${newName.trim()} adicionado`);
 		newName = '';
 		newRoles = [];
@@ -65,6 +70,7 @@
 				<input
 					bind:value={newRate}
 					type="number"
+					min="0"
 					class="w-24 rounded-xl bg-surface-2 px-3 py-2.5 text-text outline-none transition-shadow focus:ring-2 focus:ring-accent/50"
 				/>
 			</div>
