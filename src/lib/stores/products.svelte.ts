@@ -17,13 +17,9 @@ class ProductStore {
 	private _map = $derived(new Map(this.list.map((p) => [p.id, p])));
 	private _priceMap = $derived(new Map(this.list.map((p) => [p.id, p.price])));
 
-	get active() {
-		return this.list.filter((p) => p.active);
-	}
+	readonly active = $derived(this.list.filter((p) => p.active));
 
-	get categories() {
-		return [...new Set(this.active.map((p) => p.category))];
-	}
+	readonly categories = $derived.by(() => [...new Set(this.active.map((p) => p.category))]);
 
 	getByCategory(category: string) {
 		return this.active.filter((p) => p.category === category);
