@@ -1,5 +1,12 @@
+const utf8 = new TextEncoder();
+
 function tlv(id: string, value: string): string {
-	const len = value.length.toString().padStart(2, '0');
+	// O EMV/BR Code conta o tamanho em BYTES do valor codificado em UTF-8, não em
+	// code units UTF-16 (String.length). Uma chave/nome com acento ou emoji teria
+	// length menor que os bytes reais, dessincronizando o payload e invalidando o CRC.
+	const byteLen = utf8.encode(value).length;
+	if (byteLen > 99) throw new Error(`Campo PIX "${id}" excede 99 bytes (${byteLen})`);
+	const len = byteLen.toString().padStart(2, '0');
 	return `${id}${len}${value}`;
 }
 
