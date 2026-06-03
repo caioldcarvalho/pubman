@@ -1,3 +1,5 @@
+import { round2 } from '$lib/utils';
+
 const utf8 = new TextEncoder();
 
 function tlv(id: string, value: string): string {
@@ -120,7 +122,7 @@ export function buildPixBRCode(opts: {
 	txid?: string;
 }): string {
 	const key = normalizePixKey(opts.pixKey);
-	const amount = opts.amount > 0 ? opts.amount.toFixed(2) : '';
+	const amount = opts.amount > 0 ? round2(opts.amount).toFixed(2) : '';
 	const name = sanitize(opts.merchantName || 'PAGAMENTO', 25) || 'PAGAMENTO';
 	const city = sanitize(opts.merchantCity || 'BRASIL', 15) || 'BRASIL';
 	const txid = sanitize(opts.txid || '***', 25) || '***';

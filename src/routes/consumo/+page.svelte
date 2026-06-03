@@ -5,7 +5,7 @@
 	import { consumption, DISCOUNT } from '$lib/stores/consumption.svelte';
 	import { products } from '$lib/stores/products.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
-	import { formatCurrency, todayISO } from '$lib/utils';
+	import { formatCurrency, round2, todayISO } from '$lib/utils';
 
 	// Pre-select person from query param
 	const preselectedPerson = page.url.searchParams.get('person');
@@ -63,10 +63,14 @@
 
 	async function addCustomItem() {
 		const price = parseFloat(customPrice.replace(',', '.'));
-		if (!customName.trim() || !price || selectedPeople.length === 0) return;
+		if (!customName.trim() || selectedPeople.length === 0) return;
+		if (!Number.isFinite(price) || price <= 0 || price > 1_000_000) {
+			toast.error('Valor inválido');
+			return;
+		}
 
 		// Store price * 1.25 so the existing 20% discount brings it back to the real value
-		const inflatedPrice = price / (1 - DISCOUNT);
+		const inflatedPrice = round2(price / (1 - DISCOUNT));
 
 		await consumption.addSplit(selectedPeople, {
 			quantity: 1,

@@ -1,20 +1,28 @@
+// Formatadores Intl instanciados uma vez (criar a cada chamada é caro em listas).
+const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const DM = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' });
+const DMY = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const WD = new Intl.DateTimeFormat('pt-BR', { weekday: 'short' });
+
+/** Arredonda para centavos, evitando acúmulo de erro de ponto flutuante em dinheiro. */
+export function round2(value: number): number {
+	return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
 export function formatCurrency(value: number): string {
-	return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+	return BRL.format(value);
 }
 
 export function formatDate(dateStr: string): string {
-	const date = new Date(dateStr + 'T12:00:00');
-	return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+	return DM.format(new Date(dateStr + 'T12:00:00'));
 }
 
 export function formatDateFull(dateStr: string): string {
-	const date = new Date(dateStr + 'T12:00:00');
-	return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+	return DMY.format(new Date(dateStr + 'T12:00:00'));
 }
 
 export function getDayName(dateStr: string): string {
-	const date = new Date(dateStr + 'T12:00:00');
-	return date.toLocaleDateString('pt-BR', { weekday: 'short' });
+	return WD.format(new Date(dateStr + 'T12:00:00'));
 }
 
 export function todayISO(): string {
