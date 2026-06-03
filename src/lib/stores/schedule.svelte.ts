@@ -73,18 +73,40 @@ class ScheduleStore {
 
 	private _dateById = $derived(new Map(this.dates.map((d) => [d.id, d])));
 
+	// Períodos cuja availability já foi carregada sob demanda (evita refetch).
+	private _availLoadedPeriods = new Set<string>();
+
 	async load() {
-		const [pRes, dRes, aRes, asRes] = await Promise.all([
+		// availability NÃO é carregada aqui: é a tabela de maior crescimento
+		// (colaboradores × datas) e só é consumida na edição de um período
+		// (escala/[id]). Carregada sob demanda via loadAvailabilityForPeriod().
+		const [pRes, dRes, asRes] = await Promise.all([
 			supabase.from('schedule_periods').select('*').order('start_date', { ascending: false }),
 			supabase.from('schedule_dates').select('*').order('date'),
-			supabase.from('availability').select('*'),
 			supabase.from('assignments').select('*'),
 		]);
 		if (pRes.data) this.periods = pRes.data;
 		if (dRes.data) this.dates = dRes.data;
-		if (aRes.data) this.availability = aRes.data;
 		if (asRes.data) this.assignments = asRes.data;
 		this.loaded = true;
+	}
+
+	/** Carrega a disponibilidade apenas das datas de um período, sob demanda. */
+	async loadAvailabilityForPeriod(periodId: string) {
+		if (this._availLoadedPeriods.has(periodId)) return;
+		const dateIds = this.dates.filter((d) => d.period_id === periodId).map((d) => d.id);
+		if (dateIds.length === 0) {
+			this._availLoadedPeriods.add(periodId);
+			return;
+		}
+		const { data } = await supabase.from('availability').select('*').in('date_id', dateIds);
+		if (data) {
+			// Substitui qualquer linha já em memória para essas datas, depois insere as novas.
+			const dateIdSet = new Set(dateIds);
+			this.availability = this.availability.filter((a) => !dateIdSet.has(a.date_id));
+			this.availability.push(...data);
+		}
+		this._availLoadedPeriods.add(periodId);
 	}
 
 	getDatesByPeriod(periodId: string): ScheduleDate[] {
