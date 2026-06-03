@@ -156,7 +156,7 @@
 					<p class="text-sm text-text-muted">Todos já estão escalados</p>
 				{:else}
 					<div class="grid grid-cols-2 gap-2">
-						{#each availableToAdd as collab}
+						{#each availableToAdd as collab (collab.id)}
 							<button
 								onclick={() => quickAssign(collab.id)}
 								class="pressable flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2.5 text-sm font-medium transition-all active:bg-surface-3"
@@ -203,7 +203,7 @@
 			</div>
 
 			<!-- Events on this date -->
-			{#each nextEvents as evt}
+			{#each nextEvents as evt (evt.id)}
 				<div class="mb-3 rounded-2xl bg-gradient-to-br from-warning/15 to-transparent p-4 ring-1 ring-warning/20 shadow-md shadow-warning/10">
 					<div class="flex items-center gap-2">
 						<svg class="h-4 w-4 text-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12V7a2 2 0 012-2h10a2 2 0 012 2v5M3 12h18v8a1 1 0 01-1 1H4a1 1 0 01-1-1v-8z" /></svg>
@@ -231,7 +231,7 @@
 
 			<!-- Assigned freelas -->
 			<div class="stagger space-y-1.5">
-				{#each nextAssigned as assignment}
+				{#each nextAssigned as assignment (assignment.id)}
 					{@const collab = collaborators.getById(assignment.collaborator_id)}
 					{#if collab && !collab.fixed}
 						{@const consumed = consumption.totalByCollaborator(collab.id, (pid) => products.getPrice(pid))}
@@ -304,7 +304,7 @@
 						{followingAssigned.length}/{followingDate.required_count}
 					</span>
 				</div>
-				{#each followingEvents as evt}
+				{#each followingEvents as evt (evt.id)}
 					<div class="mb-2 rounded-xl bg-warning/10 px-3 py-2.5 ring-1 ring-warning/20">
 						<div class="flex items-center gap-2">
 							<span class="text-[10px] font-bold uppercase tracking-wider text-warning">Evento</span>
@@ -324,7 +324,7 @@
 					</div>
 				{/each}
 				<div class="space-y-1.5">
-					{#each followingAssigned as assignment}
+					{#each followingAssigned as assignment (assignment.id)}
 						{@const collab = collaborators.getById(assignment.collaborator_id)}
 						{#if collab}
 							<div class="flex items-center gap-3 rounded-xl bg-surface px-4 py-2.5">
@@ -351,7 +351,7 @@
 					<span class="text-xs text-text-muted">Presentes todos os dias</span>
 				</div>
 				<div class="flex flex-wrap gap-2">
-					{#each allFixed as collab}
+					{#each allFixed as collab (collab.id)}
 						{@const consumed = consumption.totalByCollaborator(collab.id, (pid) => products.getPrice(pid))}
 						<div class="flex items-center gap-2 rounded-xl bg-surface/60 px-3 py-2">
 							<span class="flex h-7 w-7 items-center justify-center rounded-full bg-info/20 text-xs font-bold text-info">

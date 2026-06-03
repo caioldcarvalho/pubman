@@ -165,7 +165,7 @@
 			<p class="mb-5 text-sm text-text-muted">Nenhum dia registrado</p>
 		{:else}
 			<div class="stagger mb-5 divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
-				{#each assignments as assignment}
+				{#each assignments as assignment (assignment.id)}
 					{@const dateStr = getDateForAssignment(assignment)}
 					<div class="flex items-center justify-between px-4 py-3">
 						<div class="text-sm">
@@ -189,7 +189,7 @@
 			<p class="mb-5 text-sm text-text-muted">Nenhum consumo</p>
 		{:else}
 			<div class="stagger mb-5 divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
-				{#each entries as entry}
+				{#each entries as entry (entry.id)}
 					{@const product = entry.product_id ? products.getById(entry.product_id) : null}
 					{@const name = entry.custom_name ?? product?.name ?? '?'}
 					<div class="flex items-center justify-between px-4 py-3">
@@ -204,7 +204,7 @@
 		{#if reimbursements.length > 0}
 			<h2 class="mb-2 text-sm font-bold uppercase tracking-wider text-text-muted">Ressarcimentos</h2>
 			<div class="stagger mb-5 divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
-				{#each reimbursements as r}
+				{#each reimbursements as r (r.id)}
 					<div class="flex items-center justify-between px-4 py-3">
 						<div class="text-sm">
 							<span class="font-medium">{r.notes || 'Ressarcimento'}</span>

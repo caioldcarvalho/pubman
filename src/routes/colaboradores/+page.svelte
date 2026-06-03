@@ -84,7 +84,7 @@
 {/if}
 
 <div class="stagger divide-y divide-surface-2">
-	{#each collaborators.sorted as collab}
+	{#each collaborators.sorted as collab (collab.id)}
 		{@const totalConsumed = consumption.totalByCollaborator(collab.id, (pid) => products.getPrice(pid))}
 		<a href="/colaboradores/{collab.id}" class="flex items-center gap-3 px-4 py-3.5 transition-colors active:bg-surface/50">
 			<div class="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-surface-2 to-surface-3 text-sm font-bold shadow-inner">

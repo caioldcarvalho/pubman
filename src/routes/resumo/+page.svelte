@@ -51,7 +51,7 @@
 	{#if payroll.length > 0}
 		<h2 class="mt-6 mb-2 text-sm font-bold uppercase tracking-wider text-text-muted">Pagamento Freelas</h2>
 		<div class="stagger divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
-			{#each payroll as r}
+			{#each payroll as r (r.collab.id)}
 				<div class="flex items-center justify-between px-4 py-3.5">
 					<div>
 						<div class="text-sm font-medium">{r.collab.name}</div>
@@ -71,7 +71,7 @@
 	{#if purchases.pending.length > 0}
 		<h2 class="mt-6 mb-2 text-sm font-bold uppercase tracking-wider text-text-muted">Reembolsos Pendentes</h2>
 		<div class="stagger divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
-			{#each purchases.pending as purchase}
+			{#each purchases.pending as purchase (purchase.id)}
 				<div class="flex items-center justify-between px-4 py-3.5">
 					<div>
 						<div class="text-sm font-semibold">{formatCurrency(purchase.amount)}</div>

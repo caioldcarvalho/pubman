@@ -13,7 +13,7 @@
 		<p class="py-8 text-center text-sm text-text-muted">Nenhuma escala criada</p>
 	{:else}
 		<div class="space-y-3">
-			{#each schedule.periods as period}
+			{#each schedule.periods as period (period.id)}
 				{@const dates = schedule.getDatesByPeriod(period.id)}
 				{@const totalAssignments = dates.reduce((sum, d) => sum + schedule.getAssignments(d.id).length, 0)}
 				<a href="/escala/{period.id}" class="block rounded-xl bg-surface p-4 transition-colors active:bg-surface-2">

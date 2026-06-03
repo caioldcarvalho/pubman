@@ -41,7 +41,7 @@ class ScheduleStore {
 	loaded = $state(false);
 
 	// Pre-computed lookup maps
-	private _datesByPeriod = $derived(() => {
+	private _datesByPeriod = $derived.by(() => {
 		const map = new Map<string, ScheduleDate[]>();
 		for (const d of this.dates) {
 			const arr = map.get(d.period_id);
@@ -51,7 +51,7 @@ class ScheduleStore {
 		return map;
 	});
 
-	private _availByDate = $derived(() => {
+	private _availByDate = $derived.by(() => {
 		const map = new Map<string, Availability[]>();
 		for (const a of this.availability) {
 			const arr = map.get(a.date_id);
@@ -61,7 +61,7 @@ class ScheduleStore {
 		return map;
 	});
 
-	private _assignByDate = $derived(() => {
+	private _assignByDate = $derived.by(() => {
 		const map = new Map<string, Assignment[]>();
 		for (const a of this.assignments) {
 			const arr = map.get(a.date_id);
@@ -88,19 +88,19 @@ class ScheduleStore {
 	}
 
 	getDatesByPeriod(periodId: string): ScheduleDate[] {
-		return this._datesByPeriod().get(periodId) ?? [];
+		return this._datesByPeriod.get(periodId) ?? [];
 	}
 
 	getAvailability(dateId: string): Availability[] {
-		return this._availByDate().get(dateId) ?? [];
+		return this._availByDate.get(dateId) ?? [];
 	}
 
 	getAvailableCollaborators(dateId: string): Availability[] {
-		return (this._availByDate().get(dateId) ?? []).filter((a) => a.available);
+		return (this._availByDate.get(dateId) ?? []).filter((a) => a.available);
 	}
 
 	getAssignments(dateId: string): Assignment[] {
-		return this._assignByDate().get(dateId) ?? [];
+		return this._assignByDate.get(dateId) ?? [];
 	}
 
 	getDateById(dateId: string): ScheduleDate | undefined {
@@ -135,7 +135,7 @@ class ScheduleStore {
 	}
 
 	isAssigned(dateId: string, collaboratorId: string) {
-		return this.assignments.some((a) => a.date_id === dateId && a.collaborator_id === collaboratorId);
+		return this._assignByDate.get(dateId)?.some((a) => a.collaborator_id === collaboratorId) ?? false;
 	}
 
 	async setAvailability(dateId: string, collaboratorId: string, available: boolean) {

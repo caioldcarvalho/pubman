@@ -33,7 +33,7 @@ class ConsumptionStore {
 	loaded = $state(false);
 
 	// Pre-computed totals by collaborator for O(1) lookup (pending only)
-	private _byCollaborator = $derived(() => {
+	private _byCollaborator = $derived.by(() => {
 		const map = new Map<string, ConsumptionEntry[]>();
 		for (const c of this.list) {
 			if (c.payment_id) continue;
@@ -45,7 +45,7 @@ class ConsumptionStore {
 	});
 
 	getByCollaborator(collaboratorId: string): ConsumptionEntry[] {
-		return this._byCollaborator().get(collaboratorId) ?? [];
+		return this._byCollaborator.get(collaboratorId) ?? [];
 	}
 
 	getByPayment(paymentId: string): ConsumptionEntry[] {
