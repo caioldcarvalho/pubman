@@ -17,7 +17,7 @@ class PaymentStore {
 	list = $state<Payment[]>([]);
 	loaded = $state(false);
 
-	get byCollaborator() {
+	private readonly _byCollaborator = $derived.by(() => {
 		const map = new Map<string, Payment[]>();
 		for (const p of this.list) {
 			if (!p.collaborator_id) continue;
@@ -26,10 +26,10 @@ class PaymentStore {
 			else map.set(p.collaborator_id, [p]);
 		}
 		return map;
-	}
+	});
 
 	getByCollaborator(collaboratorId: string): Payment[] {
-		return this.byCollaborator.get(collaboratorId) ?? [];
+		return this._byCollaborator.get(collaboratorId) ?? [];
 	}
 
 	getById(id: string): Payment | undefined {

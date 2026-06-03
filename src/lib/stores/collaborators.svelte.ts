@@ -29,45 +29,27 @@ class CollaboratorStore {
 	list = $state<Collaborator[]>([]);
 	loaded = $state(false);
 
-	get active() {
-		return this.list.filter((c) => c.active);
-	}
+	readonly active = $derived(this.list.filter((c) => c.active));
 
-	get freelancers() {
-		return this.active.filter((c) => !c.fixed);
-	}
+	readonly freelancers = $derived(this.active.filter((c) => !c.fixed));
 
-	get fixedStaff() {
-		return this.active.filter((c) => c.fixed);
-	}
+	readonly fixedStaff = $derived(this.active.filter((c) => c.fixed));
 
-	get salaoStaff() {
-		return this.active.filter((c) => c.roles.some((r) => SALAO_ROLES.includes(r)));
-	}
+	readonly salaoStaff = $derived(
+		this.active.filter((c) => c.roles.some((r) => SALAO_ROLES.includes(r))),
+	);
 
-	get salaoFreelancers() {
-		return this.salaoStaff.filter((c) => !c.fixed);
-	}
+	readonly salaoFreelancers = $derived(this.salaoStaff.filter((c) => !c.fixed));
 
-	get cozinhaStaff() {
-		return this.active.filter((c) => c.roles.includes('cozinha'));
-	}
+	readonly cozinhaStaff = $derived(this.active.filter((c) => c.roles.includes('cozinha')));
 
-	get cozinhaFreelancers() {
-		return this.cozinhaStaff.filter((c) => !c.fixed);
-	}
+	readonly cozinhaFreelancers = $derived(this.cozinhaStaff.filter((c) => !c.fixed));
 
-	get barStaff() {
-		return this.active.filter((c) => c.roles.includes('bar'));
-	}
+	readonly barStaff = $derived(this.active.filter((c) => c.roles.includes('bar')));
 
-	get barFreelancers() {
-		return this.barStaff.filter((c) => !c.fixed);
-	}
+	readonly barFreelancers = $derived(this.barStaff.filter((c) => !c.fixed));
 
-	get sorted() {
-		return [...this.active].sort((a, b) => b.stars - a.stars);
-	}
+	readonly sorted = $derived([...this.active].sort((a, b) => b.stars - a.stars));
 
 	getById(id: string) {
 		return this.list.find((c) => c.id === id);
