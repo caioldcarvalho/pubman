@@ -7,15 +7,58 @@
 	import { products } from '$lib/stores/products.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatCurrency, formatDate, getDayName, todayISO } from '$lib/utils';
+	import { browser } from '$app/environment';
 	import { Button } from '$lib/components/ui/button';
 	import Check from '@lucide/svelte/icons/check';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Wallet from '@lucide/svelte/icons/wallet';
 
+	// Selection state persists in localStorage; item marks only reset when a
+	// filter bubble (Fixos/Freelas/Ressarcimentos) is clicked.
+	const K_FILTERS = 'pagamentos.filters';
+	const K_EXCLUDED = 'pagamentos.excluded';
+	const K_NIGHTS = 'pagamentos.excludedNights';
+
+	function loadJSON<T>(key: string, fallback: T): T {
+		if (!browser) return fallback;
+		try {
+			const raw = localStorage.getItem(key);
+			return raw ? (JSON.parse(raw) as T) : fallback;
+		} catch {
+			return fallback;
+		}
+	}
+
+	function saveJSON(key: string, value: unknown) {
+		if (browser) localStorage.setItem(key, JSON.stringify(value));
+	}
+
 	// Multi-select toggles (default: freelas + ressarcimentos)
-	let showFixos = $state(false);
-	let showFreelas = $state(true);
-	let showReimb = $state(true);
+	const savedFilters = loadJSON(K_FILTERS, { fixos: false, freelas: true, reimb: true });
+	let showFixos = $state(savedFilters.fixos);
+	let showFreelas = $state(savedFilters.freelas);
+	let showReimb = $state(savedFilters.reimb);
+
+	function toggleFilter(which: 'fixos' | 'freelas' | 'reimb') {
+		if (which === 'fixos') showFixos = !showFixos;
+		else if (which === 'freelas') showFreelas = !showFreelas;
+		else showReimb = !showReimb;
+		saveJSON(K_FILTERS, { fixos: showFixos, freelas: showFreelas, reimb: showReimb });
+		// Clicking a bubble resets the item marks
+		excluded = new Set();
+		saveJSON(K_EXCLUDED, []);
+	}
+
+	// Which past nights count towards the totals (all by default)
+	let excludedNights = $state<Set<string>>(new Set(loadJSON<string[]>(K_NIGHTS, [])));
+
+	function toggleNight(dateId: string) {
+		const next = new Set(excludedNights);
+		if (next.has(dateId)) next.delete(dateId);
+		else next.add(dateId);
+		excludedNights = next;
+		saveJSON(K_NIGHTS, [...next]);
+	}
 
 	// Recent days overview: last 5 scheduled days that had assignments
 	const recentDays = $derived.by(() => {
@@ -56,7 +99,9 @@
 				return false;
 			})
 			.map((collab) => {
-				const assignments = schedule.getPastAssignments(collab.id, todayISO());
+				const assignments = schedule
+					.getPastAssignments(collab.id, todayISO())
+					.filter((a) => !excludedNights.has(a.date_id));
 				const daysWorked = assignments.length;
 				const earned = assignments.reduce((sum, a) => sum + (a.rate_override ?? collab.base_rate), 0);
 				const consumed = consumption.totalByCollaborator(collab.id, (pid) => products.getPrice(pid));
@@ -102,13 +147,14 @@
 	const allItems = $derived([...collabReport, ...generalReimbs]);
 
 	// Checkboxes: track which items are included in the total
-	let excluded = $state<Set<string>>(new Set());
+	let excluded = $state<Set<string>>(new Set(loadJSON<string[]>(K_EXCLUDED, [])));
 
 	function toggleItem(id: string) {
 		const next = new Set(excluded);
 		if (next.has(id)) next.delete(id);
 		else next.add(id);
 		excluded = next;
+		saveJSON(K_EXCLUDED, [...next]);
 	}
 
 	const totalNet = $derived(
@@ -118,6 +164,10 @@
 	);
 
 	const includedItems = $derived(allItems.filter((item) => !excluded.has(item.id)));
+
+	const excludedNightsCount = $derived(
+		recentDays.filter((d) => excludedNights.has(d.date.id)).length
+	);
 
 	function buildShareText(): string {
 		const lines: string[] = ['💰 *Pagamentos*', ''];
@@ -150,17 +200,17 @@
 	<!-- Multi-toggle filters -->
 	<div class="mb-4 flex flex-wrap gap-2">
 		<button
-			onclick={() => (showFixos = !showFixos)}
+			onclick={() => toggleFilter('fixos')}
 			class="rounded-xl px-3 py-1.5 text-sm font-medium transition-all
 				{showFixos ? 'bg-info/20 text-info ring-1 ring-info/30' : 'bg-muted text-muted-foreground'}"
 		>Fixos</button>
 		<button
-			onclick={() => (showFreelas = !showFreelas)}
+			onclick={() => toggleFilter('freelas')}
 			class="rounded-xl px-3 py-1.5 text-sm font-medium transition-all
 				{showFreelas ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20' : 'bg-muted text-muted-foreground'}"
 		>Freelas</button>
 		<button
-			onclick={() => (showReimb = !showReimb)}
+			onclick={() => toggleFilter('reimb')}
 			class="rounded-xl px-3 py-1.5 text-sm font-medium transition-all
 				{showReimb ? 'bg-warning/20 text-warning ring-1 ring-warning/30' : 'bg-muted text-muted-foreground'}"
 		>Ressarcimentos</button>
@@ -169,21 +219,37 @@
 	<!-- Recent days overview -->
 	{#if recentDays.length > 0}
 		<div class="mb-5">
-			<h2 class="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Últimas noites</h2>
+			<div class="mb-2 flex items-center justify-between">
+				<h2 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Últimas noites</h2>
+				<span class="text-[10px] text-muted-foreground">desmarque para não contar</span>
+			</div>
 			<div class="space-y-1.5">
 				{#each recentDays as day (day.date.id)}
-					<div class="rounded-xl bg-card px-3 py-2.5 shadow-sm shadow-black/5">
-						<div class="mb-1 flex items-center gap-2">
-							<span class="text-xs font-bold">{getDayName(day.date.date)}</span>
-							<span class="text-xs text-muted-foreground">{formatDate(day.date.date)}</span>
-							<span class="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold">{day.assigned.length}</span>
-						</div>
-						<div class="flex flex-wrap gap-1">
-							{#each day.assigned as person (person.id)}
-								<a href="/colaboradores/{person.id}" class="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium transition-colors hover:bg-accent">
-									{person.name}
-								</a>
-							{/each}
+					{@const nightExcluded = excludedNights.has(day.date.id)}
+					<div class="flex items-start gap-2 rounded-xl bg-card px-3 py-2.5 shadow-sm shadow-black/5 {nightExcluded ? 'opacity-40' : ''}">
+						<button
+							onclick={() => toggleNight(day.date.id)}
+							aria-label="{nightExcluded ? 'Incluir' : 'Excluir'} {formatDate(day.date.date)} do total"
+							class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-all
+								{nightExcluded ? 'border-muted-foreground bg-muted' : 'border-primary bg-primary/15'}"
+						>
+							{#if !nightExcluded}
+								<Check class="h-3 w-3 text-primary" strokeWidth={3} />
+							{/if}
+						</button>
+						<div class="min-w-0 flex-1">
+							<div class="mb-1 flex items-center gap-2">
+								<span class="text-xs font-bold">{getDayName(day.date.date)}</span>
+								<span class="text-xs text-muted-foreground">{formatDate(day.date.date)}</span>
+								<span class="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold">{day.assigned.length}</span>
+							</div>
+							<div class="flex flex-wrap gap-1">
+								{#each day.assigned as person (person.id)}
+									<a href="/colaboradores/{person.id}" class="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium transition-colors hover:bg-accent">
+										{person.name}
+									</a>
+								{/each}
+							</div>
 						</div>
 					</div>
 				{/each}
@@ -205,6 +271,9 @@
 			<div class="mt-1 text-3xl font-bold text-gradient">{formatCurrency(totalNet)}</div>
 			{#if excluded.size > 0}
 				<div class="mt-1 text-xs text-muted-foreground">{excluded.size} item(ns) excluído(s)</div>
+			{/if}
+			{#if excludedNightsCount > 0}
+				<div class="mt-0.5 text-xs text-muted-foreground">{excludedNightsCount} noite(s) fora da conta</div>
 			{/if}
 		</div>
 
