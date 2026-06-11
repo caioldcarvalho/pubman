@@ -6,6 +6,12 @@
 	import { products } from '$lib/stores/products.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatCurrency, round2, todayISO } from '$lib/utils';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import Check from '@lucide/svelte/icons/check';
+	import Plus from '@lucide/svelte/icons/plus';
+	import Minus from '@lucide/svelte/icons/minus';
 
 	// Pre-select person from query param
 	const preselectedPerson = page.url.searchParams.get('person');
@@ -149,29 +155,29 @@
 
 <PageHeader title="Registrar Consumo">
 	{#if step !== 'person'}
-		<button onclick={reset} class="text-sm font-medium text-accent transition-opacity active:opacity-60">
+		<Button variant="link" size="sm" onclick={reset}>
 			{step === 'custom' ? 'Voltar' : selectedCategory ? 'Categorias' : 'Voltar'}
-		</button>
+		</Button>
 	{/if}
 </PageHeader>
 
 <div class="px-4 py-4 pb-24">
 	{#if step === 'person'}
-		<p class="mb-3 text-sm text-text-muted">Quem consumiu? <span class="text-text-muted/70">(toque mais de um para dividir)</span></p>
+		<p class="mb-3 text-sm text-muted-foreground">Quem consumiu? <span class="text-muted-foreground/70">(toque mais de um para dividir)</span></p>
 		<div class="stagger grid grid-cols-2 gap-2">
 			{#each collaborators.active as collab (collab.id)}
 				{@const selected = selectedPeople.includes(collab.id)}
 				<button
 					onclick={() => togglePerson(collab.id)}
 					class="pressable relative rounded-2xl p-4 text-center shadow-md shadow-black/10 transition-all
-						{selected ? 'bg-accent-soft ring-2 ring-accent' : 'bg-surface'}"
+						{selected ? 'bg-primary/15 ring-2 ring-primary' : 'bg-card'}"
 				>
 					{#if selected}
-						<div class="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-white">
-							<svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+						<div class="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+							<Check class="h-3 w-3" strokeWidth={3} />
 						</div>
 					{/if}
-					<div class="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-surface-2 to-surface-3 text-lg font-bold">
+					<div class="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-muted to-accent text-lg font-bold">
 						{collab.name.slice(0, 2).toUpperCase()}
 					</div>
 					<div class="text-sm font-medium">{collab.name}</div>
@@ -180,9 +186,9 @@
 		</div>
 
 	{:else if step === 'product'}
-		<p class="mb-3 text-sm text-text-muted">
-			O que <strong class="text-text">{selectedNames.join(', ')}</strong> consumiu?
-			{#if selectedPeople.length > 1}<span class="text-accent">(dividido entre {selectedPeople.length})</span>{/if}
+		<p class="mb-3 text-sm text-muted-foreground">
+			O que <strong class="text-foreground">{selectedNames.join(', ')}</strong> consumiu?
+			{#if selectedPeople.length > 1}<span class="text-primary">(dividido entre {selectedPeople.length})</span>{/if}
 		</p>
 
 		{#if !selectedCategory}
@@ -190,51 +196,54 @@
 				{#each products.categories as cat}
 					<button
 						onclick={() => (selectedCategory = cat)}
-						class="pressable rounded-2xl bg-surface px-4 py-4 text-center text-sm font-medium shadow-md shadow-black/10"
+						class="pressable rounded-2xl bg-card px-4 py-4 text-center text-sm font-medium shadow-md shadow-black/10"
 					>
 						{cat}
 					</button>
 				{/each}
 				<button
 					onclick={() => (step = 'custom')}
-					class="pressable rounded-2xl border border-dashed border-surface-3 bg-surface/50 px-4 py-4 text-center text-sm font-medium text-text-muted shadow-md shadow-black/10"
+					class="pressable rounded-2xl border border-dashed border-border bg-card/50 px-4 py-4 text-center text-sm font-medium text-muted-foreground shadow-md shadow-black/10"
 				>
 					+ Item avulso
 				</button>
 			</div>
 		{:else}
-			<div class="stagger divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
+			<div class="stagger divide-y divide-border rounded-2xl bg-card shadow-md shadow-black/10">
 				{#each products.getByCategory(selectedCategory) as product (product.id)}
 					{@const qty = pending[product.id] ?? 0}
-					<div class="flex items-center transition-colors {qty > 0 ? 'bg-accent-soft' : ''}">
+					<div class="flex items-center transition-colors {qty > 0 ? 'bg-primary/10' : ''}">
 						<button
 							onclick={() => (pendingCount > 0 ? incPending(product.id) : selectProduct(product.id))}
-							class="flex min-w-0 flex-1 items-center justify-between py-3.5 pl-4 pr-2 text-left transition-colors active:bg-surface-2"
+							class="flex min-w-0 flex-1 items-center justify-between py-3.5 pl-4 pr-2 text-left transition-colors active:bg-muted"
 						>
 							<span class="truncate text-sm">{product.name}</span>
-							<span class="ml-2 shrink-0 text-sm font-medium text-accent">
-								{formatCurrency(product.price)}{#if selectedPeople.length > 1}<span class="text-text-muted"> · {formatCurrency(product.price / selectedPeople.length)}/un</span>{/if}
+							<span class="ml-2 shrink-0 text-sm font-medium text-primary">
+								{formatCurrency(product.price)}{#if selectedPeople.length > 1}<span class="text-muted-foreground"> · {formatCurrency(product.price / selectedPeople.length)}/un</span>{/if}
 							</span>
 						</button>
 						<div class="flex shrink-0 items-center gap-1 py-2 pl-1 pr-3">
 							{#if qty > 0}
-								<button
+								<Button
+									variant="secondary"
+									size="icon-sm"
+									class="rounded-full"
 									onclick={() => decPending(product.id)}
 									aria-label="Remover um {product.name}"
-									class="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 text-lg leading-none text-text transition-all active:scale-90"
 								>
-									−
-								</button>
-								<span class="w-6 text-center text-sm font-bold text-accent">{qty}</span>
+									<Minus />
+								</Button>
+								<span class="w-6 text-center text-sm font-bold text-primary">{qty}</span>
 							{/if}
-							<button
+							<Button
+								variant={qty > 0 ? 'default' : 'secondary'}
+								size="icon-sm"
+								class="rounded-full {qty > 0 ? '' : 'text-primary'}"
 								onclick={() => incPending(product.id)}
 								aria-label="Adicionar um {product.name}"
-								class="flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none transition-all active:scale-90
-									{qty > 0 ? 'bg-accent text-white' : 'bg-surface-2 text-accent'}"
 							>
-								+
-							</button>
+								<Plus />
+							</Button>
 						</div>
 					</div>
 				{/each}
@@ -242,52 +251,33 @@
 		{/if}
 
 	{:else if step === 'custom'}
-		<p class="mb-3 text-sm text-text-muted">
-			Item avulso para <strong class="text-text">{selectedNames.join(', ')}</strong>
-			{#if selectedPeople.length > 1}<span class="text-accent">(dividido entre {selectedPeople.length})</span>{/if}
+		<p class="mb-3 text-sm text-muted-foreground">
+			Item avulso para <strong class="text-foreground">{selectedNames.join(', ')}</strong>
+			{#if selectedPeople.length > 1}<span class="text-primary">(dividido entre {selectedPeople.length})</span>{/if}
 		</p>
 
-		<div class="space-y-3 rounded-2xl bg-surface p-4 shadow-md shadow-black/10">
-			<div>
-				<label for="custom-name" class="mb-1 block text-xs text-text-muted">Descrição</label>
-				<input
-					id="custom-name"
-					type="text"
-					bind:value={customName}
-					placeholder="Ex: rodízio, uber, etc"
-					class="w-full rounded-xl bg-surface-2 px-4 py-3 text-sm text-text outline-none ring-1 ring-transparent focus:ring-accent/50"
-				/>
+		<div class="space-y-3 rounded-2xl bg-card p-4 shadow-md shadow-black/10">
+			<div class="space-y-1.5">
+				<Label for="custom-name" class="text-xs text-muted-foreground">Descrição</Label>
+				<Input id="custom-name" type="text" bind:value={customName} placeholder="Ex: rodízio, uber, etc" />
 			</div>
-			<div>
-				<label for="custom-price" class="mb-1 block text-xs text-text-muted">Valor total (R$)</label>
-				<input
-					id="custom-price"
-					type="text"
-					inputmode="decimal"
-					bind:value={customPrice}
-					placeholder="0,00"
-					class="w-full rounded-xl bg-surface-2 px-4 py-3 text-sm text-text outline-none ring-1 ring-transparent focus:ring-accent/50"
-				/>
+			<div class="space-y-1.5">
+				<Label for="custom-price" class="text-xs text-muted-foreground">Valor total (R$)</Label>
+				<Input id="custom-price" type="text" inputmode="decimal" bind:value={customPrice} placeholder="0,00" />
 			</div>
-			<button
-				onclick={addCustomItem}
-				disabled={!customName.trim() || !customPrice}
-				class="w-full rounded-xl bg-accent py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-40"
-			>
+			<Button class="w-full" size="lg" onclick={addCustomItem} disabled={!customName.trim() || !customPrice}>
 				Adicionar
-			</button>
+			</Button>
 		</div>
 
 	{:else if step === 'done'}
 		<div class="flex flex-col items-center justify-center py-16">
 			<div class="animate-pop mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-success/20">
-				<svg class="h-10 w-10 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-					<path d="M20 6L9 17l-5-5" />
-				</svg>
+				<Check class="h-10 w-10 text-success" strokeWidth={3} />
 			</div>
 			{#if lastAdded}
 				<p class="animate-in text-center text-lg font-semibold">{lastAdded.product}</p>
-				<p class="animate-in text-center text-sm text-text-muted" style="animation-delay: 80ms">
+				<p class="animate-in text-center text-sm text-muted-foreground" style="animation-delay: 80ms">
 					{#if lastAdded.people.length > 1}
 						dividido entre {lastAdded.people.join(', ')} &middot; {formatCurrency(lastAdded.price)}
 					{:else}
@@ -302,24 +292,21 @@
 <!-- Sticky confirm bar for batched quantities on the product step -->
 {#if step === 'product' && pendingCount > 0}
 	<div class="fixed inset-x-0 bottom-16 z-10 mx-auto max-w-lg px-4 pb-3">
-		<button
+		<Button
+			class="pressable h-auto w-full rounded-2xl py-3.5 font-semibold shadow-lg shadow-primary/30"
 			onclick={confirmPending}
 			disabled={saving}
-			class="pressable w-full rounded-2xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/30 disabled:opacity-60"
 		>
 			{saving ? 'Adicionando...' : `Adicionar ${pendingCount} ${pendingCount === 1 ? 'item' : 'itens'} · ${formatCurrency(pendingTotal)}`}
-		</button>
+		</Button>
 	</div>
 {/if}
 
 <!-- Sticky continue bar on the person step -->
 {#if step === 'person' && selectedPeople.length > 0}
 	<div class="fixed inset-x-0 bottom-16 z-10 mx-auto max-w-lg px-4 pb-3">
-		<button
-			onclick={goToProducts}
-			class="pressable w-full rounded-2xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/30"
-		>
+		<Button class="pressable h-auto w-full rounded-2xl py-3.5 font-semibold shadow-lg shadow-primary/30" onclick={goToProducts}>
 			Continuar{selectedPeople.length > 1 ? ` · dividir entre ${selectedPeople.length}` : ` · ${selectedNames[0]}`}
-		</button>
+		</Button>
 	</div>
 {/if}
