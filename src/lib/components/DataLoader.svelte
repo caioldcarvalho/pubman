@@ -9,6 +9,7 @@
 	import { tasks } from '$lib/stores/tasks.svelte';
 	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
+	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -34,8 +35,8 @@
 {:else}
 	<div class="flex min-h-[60dvh] items-center justify-center">
 		<div class="text-center">
-			<div class="mx-auto mb-3 h-6 w-6 animate-spin rounded-full border-2 border-surface-2 border-t-accent"></div>
-			<p class="text-xs text-text-muted">Carregando dados...</p>
+			<LoaderCircle class="mx-auto mb-3 h-6 w-6 animate-spin text-primary" />
+			<p class="text-xs text-muted-foreground">Carregando dados...</p>
 		</div>
 	</div>
 {/if}

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Star from '@lucide/svelte/icons/star';
+
 	interface Props {
 		value: number;
 		max?: number;
@@ -28,9 +30,7 @@
 			onclick={() => handleClick(i + 1)}
 			aria-label="Estrela {i + 1}"
 		>
-			<svg viewBox="0 0 24 24" fill={filled ? 'var(--color-star)' : 'none'} stroke={filled ? 'var(--color-star)' : 'var(--color-text-muted)'} stroke-width="2">
-				<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-			</svg>
+			<Star class="h-full w-full {filled ? 'fill-star text-star' : 'text-muted-foreground'}" />
 		</button>
 	{/each}
 </div>
