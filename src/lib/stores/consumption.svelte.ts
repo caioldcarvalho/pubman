@@ -84,6 +84,25 @@ class ConsumptionStore {
 		if (data) this.list.unshift(data);
 	}
 
+	/** Add several items at once for several collaborators, splitting each value equally. */
+	async addSplitBatch(
+		collaboratorIds: string[],
+		items: {
+			product_id?: string | null;
+			quantity: number;
+			custom_name?: string;
+			custom_price?: number;
+		}[],
+		date: string,
+	) {
+		const split_count = collaboratorIds.length;
+		const rows = collaboratorIds.flatMap((collaborator_id) =>
+			items.map((item) => ({ ...item, date, collaborator_id, split_count })),
+		);
+		const { data } = await supabase.from('consumption').insert(rows).select();
+		if (data) this.list.unshift(...data);
+	}
+
 	/** Add the same item for several collaborators at once, splitting the value equally. */
 	async addSplit(
 		collaboratorIds: string[],
