@@ -16,6 +16,16 @@
 	let lastAdded = $state<{ people: string[]; product: string; price: number } | null>(null);
 	let customName = $state('');
 	let customPrice = $state('');
+	let pending = $state<Record<string, number>>({});
+	let saving = $state(false);
+
+	const pendingCount = $derived(Object.values(pending).reduce((a, b) => a + b, 0));
+	const pendingTotal = $derived(
+		Object.entries(pending).reduce(
+			(sum, [id, qty]) => sum + (products.getById(id)?.price ?? 0) * qty,
+			0,
+		),
+	);
 
 	const selectedNames = $derived(
 		selectedPeople.map((id) => collaborators.getById(id)?.name ?? '').filter(Boolean),
@@ -42,8 +52,44 @@
 			step = 'person';
 			selectedPeople = [];
 			selectedCategory = null;
+			pending = {};
 			lastAdded = null;
 		}, 1300);
+	}
+
+	function incPending(productId: string) {
+		pending = { ...pending, [productId]: (pending[productId] ?? 0) + 1 };
+	}
+
+	function decPending(productId: string) {
+		const qty = (pending[productId] ?? 0) - 1;
+		const next = { ...pending };
+		if (qty <= 0) delete next[productId];
+		else next[productId] = qty;
+		pending = next;
+	}
+
+	async function confirmPending() {
+		if (saving || pendingCount === 0 || selectedPeople.length === 0) return;
+		saving = true;
+		try {
+			const items = Object.entries(pending).map(([product_id, quantity]) => ({
+				product_id,
+				quantity,
+			}));
+			await consumption.addSplitBatch(selectedPeople, items, todayISO());
+
+			const summary = items
+				.map((i) => `${i.quantity}× ${products.getById(i.product_id)?.name ?? '?'}`)
+				.join(', ');
+			const who = selectedNames.length > 1 ? `dividido entre ${selectedNames.join(', ')}` : `para ${selectedNames[0]}`;
+			toast.success(`${summary} ${who}`);
+			const total = pendingTotal;
+			pending = {};
+			finishAndReset(summary, total);
+		} finally {
+			saving = false;
+		}
 	}
 
 	async function selectProduct(productId: string) {
@@ -96,6 +142,7 @@
 			selectedCategory = null;
 		} else {
 			step = 'person';
+			pending = {};
 		}
 	}
 </script>
@@ -158,15 +205,38 @@
 		{:else}
 			<div class="stagger divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
 				{#each products.getByCategory(selectedCategory) as product (product.id)}
-					<button
-						onclick={() => selectProduct(product.id)}
-						class="flex w-full items-center justify-between px-4 py-3.5 text-left transition-colors active:bg-surface-2"
-					>
-						<span class="text-sm">{product.name}</span>
-						<span class="text-sm font-medium text-accent">
-							{formatCurrency(product.price)}{#if selectedPeople.length > 1}<span class="text-text-muted"> · {formatCurrency(product.price / selectedPeople.length)}/un</span>{/if}
-						</span>
-					</button>
+					{@const qty = pending[product.id] ?? 0}
+					<div class="flex items-center transition-colors {qty > 0 ? 'bg-accent-soft' : ''}">
+						<button
+							onclick={() => (pendingCount > 0 ? incPending(product.id) : selectProduct(product.id))}
+							class="flex min-w-0 flex-1 items-center justify-between py-3.5 pl-4 pr-2 text-left transition-colors active:bg-surface-2"
+						>
+							<span class="truncate text-sm">{product.name}</span>
+							<span class="ml-2 shrink-0 text-sm font-medium text-accent">
+								{formatCurrency(product.price)}{#if selectedPeople.length > 1}<span class="text-text-muted"> · {formatCurrency(product.price / selectedPeople.length)}/un</span>{/if}
+							</span>
+						</button>
+						<div class="flex shrink-0 items-center gap-1 py-2 pl-1 pr-3">
+							{#if qty > 0}
+								<button
+									onclick={() => decPending(product.id)}
+									aria-label="Remover um {product.name}"
+									class="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 text-lg leading-none text-text transition-all active:scale-90"
+								>
+									−
+								</button>
+								<span class="w-6 text-center text-sm font-bold text-accent">{qty}</span>
+							{/if}
+							<button
+								onclick={() => incPending(product.id)}
+								aria-label="Adicionar um {product.name}"
+								class="flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none transition-all active:scale-90
+									{qty > 0 ? 'bg-accent text-white' : 'bg-surface-2 text-accent'}"
+							>
+								+
+							</button>
+						</div>
+					</div>
 				{/each}
 			</div>
 		{/if}
@@ -228,6 +298,19 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Sticky confirm bar for batched quantities on the product step -->
+{#if step === 'product' && pendingCount > 0}
+	<div class="fixed inset-x-0 bottom-16 z-10 mx-auto max-w-lg px-4 pb-3">
+		<button
+			onclick={confirmPending}
+			disabled={saving}
+			class="pressable w-full rounded-2xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/30 disabled:opacity-60"
+		>
+			{saving ? 'Adicionando...' : `Adicionar ${pendingCount} ${pendingCount === 1 ? 'item' : 'itens'} · ${formatCurrency(pendingTotal)}`}
+		</button>
+	</div>
+{/if}
 
 <!-- Sticky continue bar on the person step -->
 {#if step === 'person' && selectedPeople.length > 0}
