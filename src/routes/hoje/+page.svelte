@@ -16,30 +16,26 @@
 
 	const todayStr = todayISO();
 
-	// Find next scheduled date (today or future)
-	const nextScheduleDate = $derived(
+	// The page is always anchored on TODAY, scheduled or not
+	const todayScheduleDate = $derived(
+		schedule.dates.find((d) => d.date === todayStr) ?? null
+	);
+
+	// Next scheduled night after today
+	const followingDate = $derived(
 		schedule.dates
-			.filter((d) => d.date >= todayStr)
+			.filter((d) => d.date > todayStr)
 			.sort((a, b) => a.date.localeCompare(b.date))[0] ?? null
 	);
 
-	// Find the following scheduled date
-	const followingDate = $derived(
-		nextScheduleDate
-			? schedule.dates
-					.filter((d) => d.date > nextScheduleDate.date)
-					.sort((a, b) => a.date.localeCompare(b.date))[0] ?? null
-			: null
-	);
-
-	const nextAssigned = $derived(
-		nextScheduleDate ? schedule.getAssignments(nextScheduleDate.id) : []
+	const todayAssigned = $derived(
+		todayScheduleDate ? schedule.getAssignments(todayScheduleDate.id) : []
 	);
 	const followingAssigned = $derived(
 		followingDate ? schedule.getAssignments(followingDate.id) : []
 	);
 
-	const nextEvents = $derived(nextScheduleDate ? events.getByDateId(nextScheduleDate.id) : []);
+	const todayEvents = $derived(todayScheduleDate ? events.getByDateId(todayScheduleDate.id) : []);
 	const followingEvents = $derived(followingDate ? events.getByDateId(followingDate.id) : []);
 
 	// All fixed staff
@@ -48,9 +44,9 @@
 	// Toggle to include fixed in total
 	let includeFixed = $state(false);
 
-	// Total to pay for next night's freelas
+	// Total to pay for tonight's freelas
 	const totalFreelas = $derived(
-		nextAssigned.reduce((sum, a) => {
+		todayAssigned.reduce((sum, a) => {
 			const c = collaborators.getById(a.collaborator_id);
 			if (!c || c.fixed) return sum;
 			const earned = getEffectiveRate(a, c.base_rate);
@@ -71,24 +67,23 @@
 	// Quick add: available freelancers not yet assigned (all roles)
 	let showQuickAdd = $state(false);
 	const availableToAdd = $derived(
-		nextScheduleDate
-			? collaborators.freelancers.filter(
-					(c) => !nextAssigned.some((a) => a.collaborator_id === c.id)
-				)
-			: []
+		collaborators.freelancers.filter(
+			(c) => !todayAssigned.some((a) => a.collaborator_id === c.id)
+		)
 	);
 
 	async function quickAssign(collabId: string) {
-		if (!nextScheduleDate) return;
-		await schedule.toggleAssignment(nextScheduleDate.id, collabId);
+		// Creates today's schedule_date on demand if today isn't scheduled yet
+		const sd = await schedule.getOrCreateDate(todayStr);
+		await schedule.toggleAssignment(sd.id, collabId);
 		const name = collaborators.getById(collabId)?.name ?? '';
 		toast.success(`${name} adicionado`);
 		showQuickAdd = false;
 	}
 
 	async function removeAssignment(collabId: string) {
-		if (!nextScheduleDate) return;
-		await schedule.toggleAssignment(nextScheduleDate.id, collabId);
+		if (!todayScheduleDate) return;
+		await schedule.toggleAssignment(todayScheduleDate.id, collabId);
 		const name = collaborators.getById(collabId)?.name ?? '';
 		toast.info(`${name} removido`);
 	}
@@ -113,41 +108,22 @@
 	}
 
 	async function setTime(assignmentId: string, field: 'check_in' | 'check_out', value: string) {
-		const a = nextAssigned.find((x) => x.id === assignmentId);
+		const a = todayAssigned.find((x) => x.id === assignmentId);
 		if (!a) return;
 		const checkIn = field === 'check_in' ? (value || null) : a.check_in;
 		const checkOut = field === 'check_out' ? (value || null) : a.check_out;
 		await schedule.updateAssignmentTimes(assignmentId, checkIn, checkOut);
 	}
 
-	// Dynamic title
-	const pageTitle = $derived(
-		nextScheduleDate
-			? nextScheduleDate.date === todayStr
-				? 'Hoje'
-				: `${getDayName(nextScheduleDate.date)} ${formatDate(nextScheduleDate.date)}`
-			: 'Próxima Noite'
-	);
 </script>
 
-<PageHeader title={pageTitle}>
-	{#if nextScheduleDate}
-		<Button size="sm" onclick={() => (showQuickAdd = !showQuickAdd)}>
-			{showQuickAdd ? 'Fechar' : '+ Adicionar'}
-		</Button>
-	{/if}
+<PageHeader title="Hoje">
+	<Button size="sm" onclick={() => (showQuickAdd = !showQuickAdd)}>
+		{showQuickAdd ? 'Fechar' : '+ Adicionar'}
+	</Button>
 </PageHeader>
 
 <div class="px-4 py-4">
-	{#if !nextScheduleDate}
-		<div class="flex flex-col items-center py-16 text-center">
-			<div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-				<Calendar class="h-8 w-8 text-muted-foreground" strokeWidth={1.5} />
-			</div>
-			<p class="font-medium">Nenhuma noite agendada</p>
-			<p class="mt-1 text-sm text-muted-foreground">Crie uma escala para ver a próxima noite aqui</p>
-		</div>
-	{:else}
 		<!-- Quick add modal -->
 		{#if showQuickAdd}
 			<div class="animate-in mb-4 rounded-2xl bg-card p-4 shadow-lg shadow-black/20 ring-1 ring-primary/20">
@@ -189,20 +165,22 @@
 			</div>
 		</div>
 
-		<!-- Next night -->
+		<!-- Tonight -->
 		<div class="mb-5">
 			<div class="mb-3 flex items-center gap-2">
 				<Badge class="rounded-lg bg-primary/20 px-2.5 py-1 font-bold text-primary">
-					{getDayName(nextScheduleDate.date).toUpperCase()}
+					{getDayName(todayStr).toUpperCase()}
 				</Badge>
-				<span class="font-semibold">{formatDate(nextScheduleDate.date)}</span>
-				<Badge class="rounded-full font-bold {nextAssigned.length >= nextScheduleDate.required_count ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}">
-					{nextAssigned.length}/{nextScheduleDate.required_count}
-				</Badge>
+				<span class="font-semibold">{formatDate(todayStr)}</span>
+				{#if todayScheduleDate}
+					<Badge class="rounded-full font-bold {todayAssigned.length >= todayScheduleDate.required_count ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}">
+						{todayAssigned.length}/{todayScheduleDate.required_count}
+					</Badge>
+				{/if}
 			</div>
 
 			<!-- Events on this date -->
-			{#each nextEvents as evt (evt.id)}
+			{#each todayEvents as evt (evt.id)}
 				<div class="mb-3 rounded-2xl bg-gradient-to-br from-warning/15 to-transparent p-4 ring-1 ring-warning/20 shadow-md shadow-warning/10">
 					<div class="flex items-center gap-2">
 						<svg class="h-4 w-4 text-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12V7a2 2 0 012-2h10a2 2 0 012 2v5M3 12h18v8a1 1 0 01-1 1H4a1 1 0 01-1-1v-8z" /></svg>
@@ -220,7 +198,7 @@
 							<Badge class="rounded-md bg-muted text-foreground">Mesas: {evt.reserved_tables}</Badge>
 						{/if}
 					</div>
-					{#if nextAssigned.length === 0}
+					{#if todayAssigned.length === 0}
 						<a href="/dia" class="mt-3 block rounded-xl bg-warning/20 px-3 py-2 text-center text-xs font-medium text-warning ring-1 ring-warning/30">
 							Ninguém escalado — escalar agora
 						</a>
@@ -229,8 +207,15 @@
 			{/each}
 
 			<!-- Assigned freelas -->
+			{#if todayAssigned.length === 0}
+				<div class="flex flex-col items-center rounded-2xl bg-card/50 py-10 text-center ring-1 ring-border">
+					<Calendar class="mb-3 h-7 w-7 text-muted-foreground" strokeWidth={1.5} />
+					<p class="text-sm font-medium">Ninguém escalado hoje</p>
+					<p class="mt-1 text-xs text-muted-foreground">Use "+ Adicionar" para escalar alguém de última hora</p>
+				</div>
+			{/if}
 			<div class="stagger space-y-1.5">
-				{#each nextAssigned as assignment (assignment.id)}
+				{#each todayAssigned as assignment (assignment.id)}
 					{@const collab = collaborators.getById(assignment.collaborator_id)}
 					{#if collab && !collab.fixed}
 						{@const consumed = consumption.totalByCollaborator(collab.id, (pid) => products.getPrice(pid))}
@@ -293,6 +278,7 @@
 		<!-- Following night -->
 		{#if followingDate}
 			<div class="mb-5">
+				<h2 class="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Próxima noite</h2>
 				<div class="mb-3 flex items-center gap-2">
 					<Badge class="rounded-lg bg-muted px-2.5 py-1 font-bold text-foreground">
 						{getDayName(followingDate.date).toUpperCase()}
@@ -369,5 +355,4 @@
 				</div>
 			</div>
 		{/if}
-	{/if}
 </div>
