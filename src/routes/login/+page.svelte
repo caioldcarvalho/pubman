@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/stores/auth.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
 
 	let email = $state('');
 	let password = $state('');
@@ -58,44 +61,43 @@
 	<div class="animate-in w-full max-w-sm">
 		<div class="mb-8 text-center">
 			<h1 class="text-3xl font-bold tracking-tight">Ludens Club</h1>
-			<p class="mt-2 text-sm text-text-muted">Painel do gerente</p>
+			<p class="mt-2 text-sm text-muted-foreground">Painel do gerente</p>
 		</div>
 
 		<form onsubmit={handleLogin} class="space-y-4">
 			{#if error}
-				<div class="rounded-xl bg-accent/15 px-4 py-3 text-sm text-accent ring-1 ring-accent/30">
+				<div class="rounded-xl bg-primary/15 px-4 py-3 text-sm text-primary ring-1 ring-primary/30">
 					{error}
 				</div>
 			{/if}
 
-			<div>
-				<label for="email" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-text-muted">Email</label>
-				<input
+			<div class="space-y-1.5">
+				<Label for="email" class="text-xs text-muted-foreground">Email</Label>
+				<Input
 					id="email"
 					bind:value={email}
 					type="email"
 					autocomplete="email"
-					class="w-full rounded-2xl bg-surface px-4 py-3 text-text outline-none shadow-md shadow-black/10 transition-shadow focus:ring-2 focus:ring-accent/50"
 					placeholder="seu@email.com"
 				/>
 			</div>
 
-			<div>
-				<label for="password" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-text-muted">Senha</label>
-				<input
+			<div class="space-y-1.5">
+				<Label for="password" class="text-xs text-muted-foreground">Senha</Label>
+				<Input
 					id="password"
 					bind:value={password}
 					type="password"
 					autocomplete="current-password"
-					class="w-full rounded-2xl bg-surface px-4 py-3 text-text outline-none shadow-md shadow-black/10 transition-shadow focus:ring-2 focus:ring-accent/50"
 					placeholder="••••••••"
 				/>
 			</div>
 
-			<button
+			<Button
 				type="submit"
+				size="lg"
+				class="pressable h-auto w-full rounded-2xl py-3.5 font-semibold shadow-lg shadow-primary/20"
 				disabled={submitting || !email || !password || isLocked}
-				class="pressable w-full rounded-2xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/20 transition-all disabled:opacity-40 disabled:shadow-none"
 			>
 				{#if isLocked}
 					Bloqueado ({countdown}s)
@@ -104,7 +106,7 @@
 				{:else}
 					Entrar
 				{/if}
-			</button>
+			</Button>
 		</form>
 	</div>
 </div>

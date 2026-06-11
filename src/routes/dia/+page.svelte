@@ -5,6 +5,13 @@
 	import { events, type Event } from '$lib/stores/events.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatDate, getDayName, todayISO } from '$lib/utils';
+	import { Button } from '$lib/components/ui/button';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import { Textarea } from '$lib/components/ui/textarea';
+	import Pencil from '@lucide/svelte/icons/pencil';
+	import X from '@lucide/svelte/icons/x';
 
 	let selectedDate = $state(todayISO());
 
@@ -115,14 +122,15 @@
 
 <div class="px-4 py-4">
 	<!-- Date picker -->
-	<div class="mb-5 rounded-2xl bg-surface p-4 shadow-md shadow-black/10">
-		<label class="mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted">Data</label>
+	<div class="mb-5 rounded-2xl bg-card p-4 shadow-md shadow-black/10">
+		<label for="day-date" class="mb-2 block text-xs font-bold uppercase tracking-wider text-muted-foreground">Data</label>
 		<input
+			id="day-date"
 			type="date"
 			bind:value={selectedDate}
-			class="w-full rounded-xl bg-surface-2 px-4 py-3 text-center text-lg font-semibold outline-none focus:ring-2 focus:ring-accent/50"
+			class="w-full rounded-xl bg-muted px-4 py-3 text-center text-lg font-semibold outline-none focus:ring-2 focus:ring-primary/50"
 		/>
-		<p class="mt-2 text-center text-sm text-text-muted capitalize">
+		<p class="mt-2 text-center text-sm text-muted-foreground capitalize">
 			{getDayName(selectedDate)} — {formatDate(selectedDate)}
 		</p>
 	</div>
@@ -130,86 +138,64 @@
 	<!-- Events on this date -->
 	<div class="mb-5">
 		<div class="mb-2 flex items-center justify-between">
-			<h2 class="text-xs font-bold uppercase tracking-wider text-text-muted">Eventos</h2>
-			<button
-				onclick={showEventForm ? () => { resetEventForm(); showEventForm = false; } : openCreate}
-				class="rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-white shadow-md shadow-accent/20 active:scale-95"
-			>{showEventForm ? 'Cancelar' : '+ Evento'}</button>
+			<h2 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Eventos</h2>
+			<Button size="xs" onclick={showEventForm ? () => { resetEventForm(); showEventForm = false; } : openCreate}>
+				{showEventForm ? 'Cancelar' : '+ Evento'}
+			</Button>
 		</div>
 
 		{#if showEventForm}
-			<div class="mb-3 rounded-2xl bg-surface p-4 shadow-lg shadow-black/20 ring-1 ring-accent/20 space-y-3">
-				<input
-					bind:value={evtName}
-					placeholder="Nome do evento"
-					class="w-full rounded-xl bg-surface-2 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/50"
-				/>
-				<textarea
-					bind:value={evtDescription}
-					placeholder="Descrição (opcional)"
-					rows="2"
-					class="w-full resize-none rounded-xl bg-surface-2 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/50"
-				></textarea>
+			<div class="mb-3 rounded-2xl bg-card p-4 shadow-lg shadow-black/20 ring-1 ring-primary/20 space-y-3">
+				<Input bind:value={evtName} placeholder="Nome do evento" />
+				<Textarea bind:value={evtDescription} placeholder="Descrição (opcional)" rows={2} class="resize-none" />
 				<div class="flex items-center gap-2">
-					<label class="text-xs text-text-muted">Pessoas esperadas</label>
-					<input
-						type="number"
-						bind:value={evtAttendees}
-						placeholder="—"
-						min="0"
-						class="w-24 rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50"
-					/>
+					<Label for="evt-attendees" class="text-xs text-muted-foreground">Pessoas esperadas</Label>
+					<Input id="evt-attendees" type="number" bind:value={evtAttendees} placeholder="—" min="0" class="w-24" />
 				</div>
-				<div>
-					<label class="mb-1 block text-xs text-text-muted">Mesas reservadas</label>
-					<input
-						bind:value={evtTables}
-						placeholder="Ex: M1, M2, M5 (opcional)"
-						class="w-full rounded-xl bg-surface-2 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/50"
-					/>
+				<div class="space-y-1.5">
+					<Label for="evt-tables" class="text-xs text-muted-foreground">Mesas reservadas</Label>
+					<Input id="evt-tables" bind:value={evtTables} placeholder="Ex: M1, M2, M5 (opcional)" />
 				</div>
-				<button
-					onclick={saveEvent}
-					disabled={!evtName.trim()}
-					class="w-full rounded-xl bg-accent py-2.5 text-sm font-medium text-white shadow-md shadow-accent/20 active:scale-95 disabled:opacity-50"
-				>{editingEventId ? 'Salvar alterações' : 'Criar evento'}</button>
+				<Button class="w-full" size="lg" onclick={saveEvent} disabled={!evtName.trim()}>
+					{editingEventId ? 'Salvar alterações' : 'Criar evento'}
+				</Button>
 			</div>
 		{/if}
 
 		{#if dayEvents.length === 0 && !showEventForm}
-			<p class="rounded-xl bg-surface px-4 py-3 text-center text-sm text-text-muted">Nenhum evento</p>
+			<p class="rounded-xl bg-card px-4 py-3 text-center text-sm text-muted-foreground">Nenhum evento</p>
 		{:else if dayEvents.length > 0}
 			<div class="space-y-2">
 				{#each dayEvents as evt (evt.id)}
-					<div class="rounded-2xl bg-surface p-4 shadow-md shadow-black/10 ring-1 ring-accent/10">
+					<div class="rounded-2xl bg-card p-4 shadow-md shadow-black/10 ring-1 ring-primary/10">
 						<div class="flex items-start justify-between gap-2">
 							<div class="flex-1">
 								<div class="font-semibold">{evt.name}</div>
 								{#if evt.description}
-									<p class="mt-0.5 text-xs text-text-muted">{evt.description}</p>
+									<p class="mt-0.5 text-xs text-muted-foreground">{evt.description}</p>
 								{/if}
 								<div class="mt-2 flex flex-wrap gap-2 text-[11px]">
 									{#if evt.expected_attendees !== null}
-										<span class="rounded-md bg-info/15 px-2 py-0.5 font-medium text-info">{evt.expected_attendees} pessoas</span>
+										<Badge class="rounded-md bg-info/15 text-info">{evt.expected_attendees} pessoas</Badge>
 									{/if}
 									{#if evt.reserved_tables}
-										<span class="rounded-md bg-warning/15 px-2 py-0.5 font-medium text-warning">Mesas: {evt.reserved_tables}</span>
+										<Badge class="rounded-md bg-warning/15 text-warning">Mesas: {evt.reserved_tables}</Badge>
 									{/if}
 								</div>
 							</div>
 							<div class="flex gap-1">
-								<button onclick={() => openEdit(evt)} aria-label="Editar" class="rounded-lg p-1.5 text-text-muted active:scale-90 hover:bg-surface-2">
-									<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+								<button onclick={() => openEdit(evt)} aria-label="Editar" class="rounded-lg p-1.5 text-muted-foreground active:scale-90 hover:bg-muted">
+									<Pencil class="h-4 w-4" />
 								</button>
-								<button onclick={() => deleteEvent(evt.id)} aria-label="Remover" class="rounded-lg p-1.5 text-text-muted active:scale-90 hover:bg-accent-soft hover:text-accent">
-									<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+								<button onclick={() => deleteEvent(evt.id)} aria-label="Remover" class="rounded-lg p-1.5 text-muted-foreground active:scale-90 hover:bg-primary/15 hover:text-primary">
+									<X class="h-4 w-4" />
 								</button>
 							</div>
 						</div>
 						{#if assignedCollabs.length === 0}
 							<div class="mt-3 rounded-xl bg-warning/10 px-3 py-2 ring-1 ring-warning/20">
 								<p class="text-xs font-medium text-warning">Ninguém escalado nesse dia ainda</p>
-								<p class="mt-0.5 text-[11px] text-text-muted">Adiciona alguém abaixo pra cobrir o evento.</p>
+								<p class="mt-0.5 text-[11px] text-muted-foreground">Adiciona alguém abaixo pra cobrir o evento.</p>
 							</div>
 						{/if}
 					</div>
@@ -222,9 +208,9 @@
 	{#if assignedCollabs.length > 0}
 		<div class="mb-5">
 			<div class="mb-2 flex items-center justify-between">
-				<h2 class="text-xs font-bold uppercase tracking-wider text-text-muted">Escalados ({assignedCollabs.length})</h2>
+				<h2 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Escalados ({assignedCollabs.length})</h2>
 			</div>
-			<div class="divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
+			<div class="divide-y divide-border rounded-2xl bg-card shadow-md shadow-black/10">
 				{#each assignedCollabs as person (person.id)}
 					<div class="flex items-center justify-between px-4 py-3">
 						<div class="flex items-center gap-3">
@@ -233,15 +219,15 @@
 							</span>
 							<div>
 								<span class="text-sm font-medium">{person.name}</span>
-								<span class="ml-1 text-[10px] text-text-muted">{person.roles.join(', ')}</span>
+								<span class="ml-1 text-[10px] text-muted-foreground">{person.roles.join(', ')}</span>
 							</div>
 						</div>
 						<button
 							onclick={() => removeCollab(person.dateId, person.id)}
-							class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-accent-soft hover:text-accent active:scale-90"
+							class="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/15 hover:text-primary active:scale-90"
 							aria-label="Remover"
 						>
-							<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+							<X class="h-4 w-4" />
 						</button>
 					</div>
 				{/each}
@@ -251,22 +237,22 @@
 
 	<!-- Available to add -->
 	<div>
-		<h2 class="mb-2 text-xs font-bold uppercase tracking-wider text-text-muted">Adicionar</h2>
+		<h2 class="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Adicionar</h2>
 		{#if available.length === 0}
-			<p class="rounded-xl bg-surface px-4 py-6 text-center text-sm text-text-muted">Todos já estão escalados nesse dia</p>
+			<p class="rounded-xl bg-card px-4 py-6 text-center text-sm text-muted-foreground">Todos já estão escalados nesse dia</p>
 		{:else}
 			<div class="grid grid-cols-2 gap-2">
 				{#each available as collab (collab.id)}
 					<button
 						onclick={() => addCollab(collab.id)}
-						class="pressable flex items-center gap-2 rounded-xl bg-surface px-3 py-2.5 text-sm font-medium shadow-sm shadow-black/5 transition-all active:bg-surface-2"
+						class="pressable flex items-center gap-2 rounded-xl bg-card px-3 py-2.5 text-sm font-medium shadow-sm shadow-black/5 transition-all active:bg-muted"
 					>
-						<span class="flex h-7 w-7 items-center justify-center rounded-full bg-surface-2 text-[10px] font-bold">
+						<span class="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-[10px] font-bold">
 							{collab.name.slice(0, 2).toUpperCase()}
 						</span>
 						<div class="text-left">
 							<div class="text-sm">{collab.name}</div>
-							<div class="text-[10px] text-text-muted">{collab.roles.join(', ')}</div>
+							<div class="text-[10px] text-muted-foreground">{collab.roles.join(', ')}</div>
 						</div>
 					</button>
 				{/each}

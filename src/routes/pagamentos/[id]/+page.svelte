@@ -11,8 +11,12 @@
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatCurrency, formatDate, getDayName, todayISO } from '$lib/utils';
 	import { buildPixBRCode, normalizePixKey } from '$lib/pix';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import Copy from '@lucide/svelte/icons/copy';
+	import Share from '@lucide/svelte/icons/share';
 
-	const collab = $derived(collaborators.getById(page.params.id));
+	const collab = $derived(collaborators.getById(page.params.id!));
 
 	const assignments = $derived(
 		collab ? schedule.getPastAssignments(collab.id, todayISO()) : []
@@ -145,18 +149,18 @@
 	<div class="px-4 py-4">
 		<!-- Summary -->
 		<div class="animate-in mb-5 grid grid-cols-3 gap-2">
-			<div class="rounded-2xl bg-surface p-3 text-center shadow-md shadow-black/10">
+			<div class="rounded-2xl bg-card p-3 text-center shadow-md shadow-black/10">
 				<div class="text-lg font-bold text-success">{formatCurrency(totalEarned)}</div>
-				<div class="text-[10px] font-medium uppercase tracking-wider text-text-muted">Ganhou</div>
+				<div class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Ganhou</div>
 			</div>
-			<div class="rounded-2xl bg-surface p-3 text-center shadow-md shadow-black/10">
-				<div class="text-lg font-bold text-accent">{formatCurrency(totalConsumed)}</div>
-				<div class="text-[10px] font-medium uppercase tracking-wider text-text-muted">Consumiu</div>
+			<div class="rounded-2xl bg-card p-3 text-center shadow-md shadow-black/10">
+				<div class="text-lg font-bold text-primary">{formatCurrency(totalConsumed)}</div>
+				<div class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Consumiu</div>
 			</div>
 			<div class="rounded-2xl p-3 text-center shadow-md shadow-black/10
-				{net >= 0 ? 'bg-success/10 ring-1 ring-success/20' : 'bg-accent/10 ring-1 ring-accent/20'}">
-				<div class="text-lg font-bold {net >= 0 ? 'text-success' : 'text-accent'}">{formatCurrency(net)}</div>
-				<div class="text-[10px] font-medium uppercase tracking-wider text-text-muted">Líquido</div>
+				{net >= 0 ? 'bg-success/10 ring-1 ring-success/20' : 'bg-primary/10 ring-1 ring-primary/20'}">
+				<div class="text-lg font-bold {net >= 0 ? 'text-success' : 'text-primary'}">{formatCurrency(net)}</div>
+				<div class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Líquido</div>
 			</div>
 		</div>
 
@@ -168,23 +172,23 @@
 		{/if}
 
 		<!-- Days worked -->
-		<h2 class="mb-2 text-sm font-bold uppercase tracking-wider text-text-muted">Dias trabalhados</h2>
+		<h2 class="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">Dias trabalhados</h2>
 		{#if assignments.length === 0}
-			<p class="mb-5 text-sm text-text-muted">Nenhum dia registrado</p>
+			<p class="mb-5 text-sm text-muted-foreground">Nenhum dia registrado</p>
 		{:else}
-			<div class="stagger mb-5 divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
+			<div class="stagger mb-5 divide-y divide-border rounded-2xl bg-card shadow-md shadow-black/10">
 				{#each assignments as assignment (assignment.id)}
 					{@const dateStr = getDateForAssignment(assignment)}
 					<div class="flex items-center justify-between px-4 py-3">
 						<div class="text-sm">
 							<span class="font-medium">{getDayName(dateStr)}</span>
-							<span class="text-text-muted"> {formatDate(dateStr)}</span>
+							<span class="text-muted-foreground"> {formatDate(dateStr)}</span>
 						</div>
-						<input
+						<Input
 							type="number"
 							value={assignment.rate_override ?? collab.base_rate}
 							onchange={(e) => setRateOverride(assignment.id, e.currentTarget.value)}
-							class="w-24 rounded-xl bg-surface-2 px-3 py-1.5 text-right text-sm font-medium outline-none transition-shadow focus:ring-2 focus:ring-accent/50"
+							class="w-24 text-right font-medium"
 						/>
 					</div>
 				{/each}
@@ -192,17 +196,17 @@
 		{/if}
 
 		<!-- Consumption -->
-		<h2 class="mb-2 text-sm font-bold uppercase tracking-wider text-text-muted">Consumo</h2>
+		<h2 class="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">Consumo</h2>
 		{#if entries.length === 0}
-			<p class="mb-5 text-sm text-text-muted">Nenhum consumo</p>
+			<p class="mb-5 text-sm text-muted-foreground">Nenhum consumo</p>
 		{:else}
-			<div class="stagger mb-5 divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
+			<div class="stagger mb-5 divide-y divide-border rounded-2xl bg-card shadow-md shadow-black/10">
 				{#each entries as entry (entry.id)}
 					{@const product = entry.product_id ? products.getById(entry.product_id) : null}
 					{@const name = entry.custom_name ?? product?.name ?? '?'}
 					<div class="flex items-center justify-between px-4 py-3">
-						<div class="text-sm">{name} <span class="text-text-muted">x{entry.quantity}{#if entry.split_count > 1} ÷{entry.split_count}{/if}</span></div>
-						<span class="text-sm font-medium text-accent">{formatCurrency(entryValue(entry, getPrice))}</span>
+						<div class="text-sm">{name} <span class="text-muted-foreground">x{entry.quantity}{#if entry.split_count > 1} ÷{entry.split_count}{/if}</span></div>
+						<span class="text-sm font-medium text-primary">{formatCurrency(entryValue(entry, getPrice))}</span>
 					</div>
 				{/each}
 			</div>
@@ -210,13 +214,13 @@
 
 		<!-- Reimbursements -->
 		{#if reimbursements.length > 0}
-			<h2 class="mb-2 text-sm font-bold uppercase tracking-wider text-text-muted">Ressarcimentos</h2>
-			<div class="stagger mb-5 divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
+			<h2 class="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">Ressarcimentos</h2>
+			<div class="stagger mb-5 divide-y divide-border rounded-2xl bg-card shadow-md shadow-black/10">
 				{#each reimbursements as r (r.id)}
 					<div class="flex items-center justify-between px-4 py-3">
 						<div class="text-sm">
 							<span class="font-medium">{r.notes || 'Ressarcimento'}</span>
-							<span class="text-text-muted"> {formatDate(r.date)}</span>
+							<span class="text-muted-foreground"> {formatDate(r.date)}</span>
 						</div>
 						<span class="text-sm font-medium text-warning">+{formatCurrency(r.amount)}</span>
 					</div>
@@ -238,30 +242,24 @@
 						aria-label="Abrir em app de banco"
 						class="pressable flex flex-1 items-center justify-center rounded-2xl bg-info/20 text-info ring-1 ring-info/30 transition-all"
 					>
-						<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<path d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7" />
-							<polyline points="16 6 12 2 8 6" />
-							<line x1="12" y1="2" x2="12" y2="15" />
-						</svg>
+						<Share class="h-5 w-5" />
 					</button>
 				</div>
 				<button
 					onclick={copyPixKey}
-					class="mb-3 mx-auto flex items-center gap-1.5 text-[11px] text-text-muted transition-colors active:text-info"
+					class="mb-3 mx-auto flex items-center gap-1.5 text-[11px] text-muted-foreground transition-colors active:text-info"
 				>
-					<svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-					</svg>
+					<Copy class="h-3 w-3" />
 					Chave: {collab.pix_key} <span class="text-info">(toque p/ copiar)</span>
 				</button>
 			{:else}
-				<div class="mb-3 rounded-2xl bg-surface p-3 ring-1 ring-info/20">
-					<p class="mb-2 text-xs text-text-muted">Sem chave PIX cadastrada</p>
+				<div class="mb-3 rounded-2xl bg-card p-3 ring-1 ring-info/20">
+					<p class="mb-2 text-xs text-muted-foreground">Sem chave PIX cadastrada</p>
 					<div class="flex gap-2">
-						<input
+						<Input
 							bind:value={pixKeyDraft}
 							placeholder="CPF, e-mail, telefone..."
-							class="flex-1 rounded-xl bg-surface-2 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-info/50"
+							class="flex-1 focus-visible:ring-info/50"
 						/>
 						<button
 							onclick={savePixKey}
@@ -273,12 +271,13 @@
 			{/if}
 		{/if}
 
-		<button
+		<Button
+			size="lg"
 			onclick={markPaid}
-			class="pressable w-full rounded-2xl bg-success py-3.5 text-center font-semibold text-bg shadow-lg shadow-success/20 transition-all"
+			class="pressable h-auto w-full rounded-2xl bg-success py-3.5 font-semibold text-background shadow-lg shadow-success/20 hover:bg-success/90"
 		>
 			Marcar como Pago
-		</button>
+		</Button>
 	</div>
 {:else}
 	<PageHeader title="Não encontrado" backHref="/pagamentos" />

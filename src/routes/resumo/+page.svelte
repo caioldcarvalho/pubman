@@ -31,35 +31,35 @@
 
 <div class="px-4 py-4">
 	<!-- Grand total -->
-	<div class="animate-in mb-6 rounded-2xl bg-gradient-to-br from-accent/20 via-accent/10 to-transparent p-6 text-center ring-1 ring-accent/20 shadow-lg shadow-accent/10">
-		<div class="text-xs font-bold uppercase tracking-wider text-text-muted">Total a desembolsar</div>
+	<div class="animate-in mb-6 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent p-6 text-center ring-1 ring-primary/20 shadow-lg shadow-primary/10">
+		<div class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total a desembolsar</div>
 		<div class="mt-2 text-4xl font-bold text-gradient">{formatCurrency(grandTotal)}</div>
 	</div>
 
 	<div class="stagger grid grid-cols-2 gap-3">
-		<div class="rounded-2xl bg-surface p-4 text-center shadow-md shadow-black/10">
+		<div class="rounded-2xl bg-card p-4 text-center shadow-md shadow-black/10">
 			<div class="text-xl font-bold text-success">{formatCurrency(totalPayroll)}</div>
-			<div class="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted">Freelas</div>
+			<div class="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Freelas</div>
 		</div>
-		<div class="rounded-2xl bg-surface p-4 text-center shadow-md shadow-black/10">
+		<div class="rounded-2xl bg-card p-4 text-center shadow-md shadow-black/10">
 			<div class="text-xl font-bold text-warning">{formatCurrency(totalReimbursement)}</div>
-			<div class="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted">Reembolsos</div>
+			<div class="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Reembolsos</div>
 		</div>
 	</div>
 
 	<!-- Payroll breakdown -->
 	{#if payroll.length > 0}
-		<h2 class="mt-6 mb-2 text-sm font-bold uppercase tracking-wider text-text-muted">Pagamento Freelas</h2>
-		<div class="stagger divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
+		<h2 class="mt-6 mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">Pagamento Freelas</h2>
+		<div class="stagger divide-y divide-border rounded-2xl bg-card shadow-md shadow-black/10">
 			{#each payroll as r (r.collab.id)}
 				<div class="flex items-center justify-between px-4 py-3.5">
 					<div>
 						<div class="text-sm font-medium">{r.collab.name}</div>
-						<div class="text-xs text-text-muted">
+						<div class="text-xs text-muted-foreground">
 							{formatCurrency(r.earned)} - {formatCurrency(r.consumed)}
 						</div>
 					</div>
-					<div class="rounded-lg px-2.5 py-1 text-sm font-bold {r.net >= 0 ? 'bg-success/15 text-success' : 'bg-accent/15 text-accent'}">
+					<div class="rounded-lg px-2.5 py-1 text-sm font-bold {r.net >= 0 ? 'bg-success/15 text-success' : 'bg-primary/15 text-primary'}">
 						{formatCurrency(r.net)}
 					</div>
 				</div>
@@ -69,14 +69,14 @@
 
 	<!-- Reimbursement breakdown -->
 	{#if purchases.pending.length > 0}
-		<h2 class="mt-6 mb-2 text-sm font-bold uppercase tracking-wider text-text-muted">Reembolsos Pendentes</h2>
-		<div class="stagger divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
+		<h2 class="mt-6 mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">Reembolsos Pendentes</h2>
+		<div class="stagger divide-y divide-border rounded-2xl bg-card shadow-md shadow-black/10">
 			{#each purchases.pending as purchase (purchase.id)}
 				<div class="flex items-center justify-between px-4 py-3.5">
 					<div>
 						<div class="text-sm font-semibold">{formatCurrency(purchase.amount)}</div>
 						{#if purchase.notes}
-							<div class="text-xs text-text-muted">{purchase.notes}</div>
+							<div class="text-xs text-muted-foreground">{purchase.notes}</div>
 						{/if}
 					</div>
 					<button
