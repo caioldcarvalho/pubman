@@ -24,6 +24,8 @@
 	let customPrice = $state('');
 	let pending = $state<Record<string, number>>({});
 	let saving = $state(false);
+	// Data do consumo (permite lançar dias passados); volta para hoje após salvar
+	let consumeDate = $state(todayISO());
 
 	const pendingCount = $derived(Object.values(pending).reduce((a, b) => a + b, 0));
 	const pendingTotal = $derived(
@@ -60,6 +62,7 @@
 			selectedCategory = null;
 			pending = {};
 			lastAdded = null;
+			consumeDate = todayISO();
 		}, 1300);
 	}
 
@@ -83,7 +86,7 @@
 				product_id,
 				quantity,
 			}));
-			await consumption.addSplitBatch(selectedPeople, items, todayISO());
+			await consumption.addSplitBatch(selectedPeople, items, consumeDate);
 
 			const summary = items
 				.map((i) => `${i.quantity}× ${products.getById(i.product_id)?.name ?? '?'}`)
@@ -105,7 +108,7 @@
 		await consumption.addSplit(selectedPeople, {
 			product_id: productId,
 			quantity: 1,
-			date: todayISO(),
+			date: consumeDate,
 		});
 
 		const who = selectedNames.length > 1 ? `dividido entre ${selectedNames.join(', ')}` : `para ${selectedNames[0]}`;
@@ -126,7 +129,7 @@
 
 		await consumption.addSplit(selectedPeople, {
 			quantity: 1,
-			date: todayISO(),
+			date: consumeDate,
 			custom_name: customName.trim(),
 			custom_price: inflatedPrice,
 		});
@@ -162,6 +165,21 @@
 </PageHeader>
 
 <div class="px-4 py-4 pb-24">
+	{#if step !== 'done'}
+		<div class="mb-3 flex items-center justify-between rounded-xl px-3 py-2 ring-1 transition-colors {consumeDate === todayISO() ? 'bg-card/50 ring-border' : 'bg-warning/10 ring-warning/30'}">
+			<label for="consume-date" class="text-xs font-medium {consumeDate === todayISO() ? 'text-muted-foreground' : 'text-warning'}">
+				{consumeDate === todayISO() ? 'Lançando para hoje' : 'Lançando para outro dia'}
+			</label>
+			<input
+				id="consume-date"
+				type="date"
+				bind:value={consumeDate}
+				max={todayISO()}
+				class="rounded-lg bg-muted px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-primary/50"
+			/>
+		</div>
+	{/if}
+
 	{#if step === 'person'}
 		<p class="mb-3 text-sm text-muted-foreground">Quem consumiu? <span class="text-muted-foreground/70">(toque mais de um para dividir)</span></p>
 		<div class="stagger grid grid-cols-2 gap-2">
