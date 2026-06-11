@@ -7,6 +7,10 @@
 	import { products } from '$lib/stores/products.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatCurrency, formatDate, getDayName, todayISO } from '$lib/utils';
+	import { Button } from '$lib/components/ui/button';
+	import Check from '@lucide/svelte/icons/check';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import Wallet from '@lucide/svelte/icons/wallet';
 
 	// Multi-select toggles (default: freelas + ressarcimentos)
 	let showFixos = $state(false);
@@ -138,12 +142,7 @@
 
 <PageHeader title="Pagamentos">
 	{#if allItems.length > 0}
-		<button
-			onclick={share}
-			class="rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-white shadow-md shadow-accent/20 transition-all active:scale-95"
-		>
-			Compartilhar
-		</button>
+		<Button size="sm" onclick={share}>Compartilhar</Button>
 	{/if}
 </PageHeader>
 
@@ -153,35 +152,35 @@
 		<button
 			onclick={() => (showFixos = !showFixos)}
 			class="rounded-xl px-3 py-1.5 text-sm font-medium transition-all
-				{showFixos ? 'bg-info/20 text-info ring-1 ring-info/30' : 'bg-surface-2 text-text-muted'}"
+				{showFixos ? 'bg-info/20 text-info ring-1 ring-info/30' : 'bg-muted text-muted-foreground'}"
 		>Fixos</button>
 		<button
 			onclick={() => (showFreelas = !showFreelas)}
 			class="rounded-xl px-3 py-1.5 text-sm font-medium transition-all
-				{showFreelas ? 'bg-accent text-white shadow-md shadow-accent/20' : 'bg-surface-2 text-text-muted'}"
+				{showFreelas ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20' : 'bg-muted text-muted-foreground'}"
 		>Freelas</button>
 		<button
 			onclick={() => (showReimb = !showReimb)}
 			class="rounded-xl px-3 py-1.5 text-sm font-medium transition-all
-				{showReimb ? 'bg-warning/20 text-warning ring-1 ring-warning/30' : 'bg-surface-2 text-text-muted'}"
+				{showReimb ? 'bg-warning/20 text-warning ring-1 ring-warning/30' : 'bg-muted text-muted-foreground'}"
 		>Ressarcimentos</button>
 	</div>
 
 	<!-- Recent days overview -->
 	{#if recentDays.length > 0}
 		<div class="mb-5">
-			<h2 class="mb-2 text-xs font-bold uppercase tracking-wider text-text-muted">Últimas noites</h2>
+			<h2 class="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Últimas noites</h2>
 			<div class="space-y-1.5">
 				{#each recentDays as day (day.date.id)}
-					<div class="rounded-xl bg-surface px-3 py-2.5 shadow-sm shadow-black/5">
+					<div class="rounded-xl bg-card px-3 py-2.5 shadow-sm shadow-black/5">
 						<div class="mb-1 flex items-center gap-2">
 							<span class="text-xs font-bold">{getDayName(day.date.date)}</span>
-							<span class="text-xs text-text-muted">{formatDate(day.date.date)}</span>
-							<span class="ml-auto rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-bold">{day.assigned.length}</span>
+							<span class="text-xs text-muted-foreground">{formatDate(day.date.date)}</span>
+							<span class="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold">{day.assigned.length}</span>
 						</div>
 						<div class="flex flex-wrap gap-1">
 							{#each day.assigned as person (person.id)}
-								<a href="/colaboradores/{person.id}" class="rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium transition-colors hover:bg-surface-3">
+								<a href="/colaboradores/{person.id}" class="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium transition-colors hover:bg-accent">
 									{person.name}
 								</a>
 							{/each}
@@ -194,35 +193,33 @@
 
 	{#if allItems.length === 0}
 		<div class="flex flex-col items-center py-16 text-center">
-			<div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-surface-2">
-				<svg class="h-8 w-8 text-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-					<path d="M21 12V7H5a2 2 0 010-4h14v4M3 5v14a2 2 0 002 2h16v-5M18 14a1 1 0 100 2 1 1 0 000-2z" />
-				</svg>
+			<div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+				<Wallet class="h-8 w-8 text-muted-foreground" strokeWidth={1.5} />
 			</div>
-			<p class="text-sm text-text-muted">Nenhum pagamento pendente.</p>
-			<p class="mt-1 text-xs text-text-muted">Escale colaboradores e registre consumo primeiro.</p>
+			<p class="text-sm text-muted-foreground">Nenhum pagamento pendente.</p>
+			<p class="mt-1 text-xs text-muted-foreground">Escale colaboradores e registre consumo primeiro.</p>
 		</div>
 	{:else}
-		<div class="animate-in mb-5 rounded-2xl bg-gradient-to-br from-accent/15 to-transparent p-5 text-center ring-1 ring-accent/20">
-			<div class="text-xs font-medium uppercase tracking-wider text-text-muted">Total a pagar</div>
+		<div class="animate-in mb-5 rounded-2xl bg-gradient-to-br from-primary/15 to-transparent p-5 text-center ring-1 ring-primary/20">
+			<div class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Total a pagar</div>
 			<div class="mt-1 text-3xl font-bold text-gradient">{formatCurrency(totalNet)}</div>
 			{#if excluded.size > 0}
-				<div class="mt-1 text-xs text-text-muted">{excluded.size} item(ns) excluído(s)</div>
+				<div class="mt-1 text-xs text-muted-foreground">{excluded.size} item(ns) excluído(s)</div>
 			{/if}
 		</div>
 
 		<div class="stagger space-y-2">
 			{#each allItems as item (item.id)}
-				<div class="flex items-center gap-2 rounded-2xl bg-surface px-3 py-3.5 shadow-md shadow-black/10
+				<div class="flex items-center gap-2 rounded-2xl bg-card px-3 py-3.5 shadow-md shadow-black/10
 					{excluded.has(item.id) ? 'opacity-40' : ''}">
 					<!-- Checkbox -->
 					<button
 						onclick={() => toggleItem(item.id)}
 						class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-all
-							{excluded.has(item.id) ? 'border-text-muted bg-surface-2' : 'border-accent bg-accent/15'}"
+							{excluded.has(item.id) ? 'border-muted-foreground bg-muted' : 'border-primary bg-primary/15'}"
 					>
 						{#if !excluded.has(item.id)}
-							<svg class="h-3 w-3 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5" /></svg>
+							<Check class="h-3 w-3 text-primary" strokeWidth={3} />
 						{/if}
 					</button>
 
@@ -230,14 +227,14 @@
 					<a href={item.href} class="pressable flex flex-1 items-center justify-between">
 						<div>
 							<div class="font-medium">{item.label}</div>
-							<div class="mt-0.5 text-xs text-text-muted">{item.sublabel}</div>
+							<div class="mt-0.5 text-xs text-muted-foreground">{item.sublabel}</div>
 						</div>
 						<div class="flex items-center gap-2">
 							<div class="rounded-lg px-2.5 py-1 text-right text-sm font-bold
-								{item.type === 'reimb' ? 'bg-warning/15 text-warning' : item.net >= 0 ? 'bg-success/15 text-success' : 'bg-accent/15 text-accent'}">
+								{item.type === 'reimb' ? 'bg-warning/15 text-warning' : item.net >= 0 ? 'bg-success/15 text-success' : 'bg-primary/15 text-primary'}">
 								{formatCurrency(item.net)}
 							</div>
-							<svg class="h-4 w-4 text-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" /></svg>
+							<ChevronRight class="h-4 w-4 text-muted-foreground" />
 						</div>
 					</a>
 				</div>

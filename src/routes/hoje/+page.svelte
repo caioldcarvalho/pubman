@@ -8,6 +8,11 @@
 	import { events } from '$lib/stores/events.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatCurrency, formatDate, getDayName, todayISO } from '$lib/utils';
+	import { Button } from '$lib/components/ui/button';
+	import { Badge } from '$lib/components/ui/badge';
+	import Calendar from '@lucide/svelte/icons/calendar';
+	import Plus from '@lucide/svelte/icons/plus';
+	import X from '@lucide/svelte/icons/x';
 
 	const todayStr = todayISO();
 
@@ -127,41 +132,36 @@
 
 <PageHeader title={pageTitle}>
 	{#if nextScheduleDate}
-		<button
-			onclick={() => (showQuickAdd = !showQuickAdd)}
-			class="rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-white shadow-md shadow-accent/20 transition-all active:scale-95"
-		>
+		<Button size="sm" onclick={() => (showQuickAdd = !showQuickAdd)}>
 			{showQuickAdd ? 'Fechar' : '+ Adicionar'}
-		</button>
+		</Button>
 	{/if}
 </PageHeader>
 
 <div class="px-4 py-4">
 	{#if !nextScheduleDate}
 		<div class="flex flex-col items-center py-16 text-center">
-			<div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-surface-2">
-				<svg class="h-8 w-8 text-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-					<path d="M6 2v2M18 2v2M3 8h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" />
-				</svg>
+			<div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+				<Calendar class="h-8 w-8 text-muted-foreground" strokeWidth={1.5} />
 			</div>
 			<p class="font-medium">Nenhuma noite agendada</p>
-			<p class="mt-1 text-sm text-text-muted">Crie uma escala para ver a próxima noite aqui</p>
+			<p class="mt-1 text-sm text-muted-foreground">Crie uma escala para ver a próxima noite aqui</p>
 		</div>
 	{:else}
 		<!-- Quick add modal -->
 		{#if showQuickAdd}
-			<div class="animate-in mb-4 rounded-2xl bg-surface p-4 shadow-lg shadow-black/20 ring-1 ring-accent/20">
+			<div class="animate-in mb-4 rounded-2xl bg-card p-4 shadow-lg shadow-black/20 ring-1 ring-primary/20">
 				<p class="mb-3 text-sm font-medium">Adicionar de última hora:</p>
 				{#if availableToAdd.length === 0}
-					<p class="text-sm text-text-muted">Todos já estão escalados</p>
+					<p class="text-sm text-muted-foreground">Todos já estão escalados</p>
 				{:else}
 					<div class="grid grid-cols-2 gap-2">
 						{#each availableToAdd as collab (collab.id)}
 							<button
 								onclick={() => quickAssign(collab.id)}
-								class="pressable flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2.5 text-sm font-medium transition-all active:bg-surface-3"
+								class="pressable flex items-center gap-2 rounded-xl bg-muted px-3 py-2.5 text-sm font-medium transition-all active:bg-accent"
 							>
-								<span class="flex h-7 w-7 items-center justify-center rounded-full bg-surface-3 text-xs font-bold">
+								<span class="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-bold">
 									{collab.name.slice(0, 2).toUpperCase()}
 								</span>
 								{collab.name}
@@ -173,16 +173,16 @@
 		{/if}
 
 		<!-- Total card -->
-		<div class="animate-in mb-5 rounded-2xl bg-gradient-to-br from-accent/15 to-transparent p-5 ring-1 ring-accent/20 shadow-lg shadow-accent/10">
+		<div class="animate-in mb-5 rounded-2xl bg-gradient-to-br from-primary/15 to-transparent p-5 ring-1 ring-primary/20 shadow-lg shadow-primary/10">
 			<div class="flex items-center justify-between">
 				<div>
-					<div class="text-xs font-bold uppercase tracking-wider text-text-muted">Total a repassar</div>
+					<div class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total a repassar</div>
 					<div class="mt-1 text-3xl font-bold text-gradient">{formatCurrency(totalToRepass)}</div>
 				</div>
 				<button
 					onclick={() => (includeFixed = !includeFixed)}
 					class="rounded-xl px-3 py-2 text-xs font-medium transition-all
-						{includeFixed ? 'bg-info/20 text-info ring-1 ring-info/30' : 'bg-surface-2 text-text-muted'}"
+						{includeFixed ? 'bg-info/20 text-info ring-1 ring-info/30' : 'bg-muted text-muted-foreground'}"
 				>
 					{includeFixed ? 'Com fixos' : 'Sem fixos'}
 				</button>
@@ -192,14 +192,13 @@
 		<!-- Next night -->
 		<div class="mb-5">
 			<div class="mb-3 flex items-center gap-2">
-				<span class="rounded-lg bg-accent/20 px-2.5 py-1 text-xs font-bold text-accent">
+				<Badge class="rounded-lg bg-primary/20 px-2.5 py-1 font-bold text-primary">
 					{getDayName(nextScheduleDate.date).toUpperCase()}
-				</span>
+				</Badge>
 				<span class="font-semibold">{formatDate(nextScheduleDate.date)}</span>
-				<span class="rounded-full px-2 py-0.5 text-xs font-bold
-					{nextAssigned.length >= nextScheduleDate.required_count ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}">
+				<Badge class="rounded-full font-bold {nextAssigned.length >= nextScheduleDate.required_count ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}">
 					{nextAssigned.length}/{nextScheduleDate.required_count}
-				</span>
+				</Badge>
 			</div>
 
 			<!-- Events on this date -->
@@ -211,14 +210,14 @@
 					</div>
 					<div class="mt-1 font-semibold">{evt.name}</div>
 					{#if evt.description}
-						<p class="mt-0.5 text-xs text-text-muted">{evt.description}</p>
+						<p class="mt-0.5 text-xs text-muted-foreground">{evt.description}</p>
 					{/if}
 					<div class="mt-2 flex flex-wrap gap-2 text-[11px]">
 						{#if evt.expected_attendees !== null}
-							<span class="rounded-md bg-info/15 px-2 py-0.5 font-medium text-info">{evt.expected_attendees} pessoas</span>
+							<Badge class="rounded-md bg-info/15 text-info">{evt.expected_attendees} pessoas</Badge>
 						{/if}
 						{#if evt.reserved_tables}
-							<span class="rounded-md bg-surface-2 px-2 py-0.5 font-medium">Mesas: {evt.reserved_tables}</span>
+							<Badge class="rounded-md bg-muted text-foreground">Mesas: {evt.reserved_tables}</Badge>
 						{/if}
 					</div>
 					{#if nextAssigned.length === 0}
@@ -237,9 +236,9 @@
 						{@const consumed = consumption.totalByCollaborator(collab.id, (pid) => products.getPrice(pid))}
 						{@const effectiveRate = getEffectiveRate(assignment, collab.base_rate)}
 						{@const hours = getHoursWorked(assignment.check_in, assignment.check_out)}
-						<div class="rounded-2xl bg-surface px-4 py-3 shadow-md shadow-black/10">
+						<div class="rounded-2xl bg-card px-4 py-3 shadow-md shadow-black/10">
 							<div class="flex items-center gap-3">
-								<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-surface-2 to-surface-3 text-sm font-bold">
+								<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-muted to-accent text-sm font-bold">
 									{collab.name.slice(0, 2).toUpperCase()}
 								</div>
 								<div class="flex-1">
@@ -247,42 +246,42 @@
 										<span class="font-medium">{collab.name}</span>
 										{#if collab.stars > 0}<span class="text-xs text-star">{collab.stars}★</span>{/if}
 									</div>
-									<div class="text-xs text-text-muted">
+									<div class="text-xs text-muted-foreground">
 										{formatCurrency(effectiveRate)}
 										{#if hours !== null}
 											<span class="text-info">({hours.toFixed(1)}h)</span>
 										{/if}
 										{#if consumed > 0}
-											<span class="text-accent"> - {formatCurrency(consumed)} consumo</span>
+											<span class="text-primary"> - {formatCurrency(consumed)} consumo</span>
 										{/if}
 									</div>
 								</div>
-								<a href="/consumo?person={collab.id}" class="rounded-lg bg-accent-soft p-2 text-accent transition-all active:scale-90" aria-label="Anotar consumo">
-									<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+								<a href="/consumo?person={collab.id}" class="rounded-lg bg-primary/15 p-2 text-primary transition-all active:scale-90" aria-label="Anotar consumo">
+									<Plus class="h-4 w-4" />
 								</a>
 								<button
 									onclick={() => removeAssignment(collab.id)}
-									class="rounded-lg bg-surface-2 p-2 text-text-muted transition-all active:scale-90 hover:text-accent"
+									class="rounded-lg bg-muted p-2 text-muted-foreground transition-all active:scale-90 hover:text-primary"
 									aria-label="Remover"
 								>
-									<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+									<X class="h-4 w-4" />
 								</button>
 							</div>
 							<!-- Time tracking -->
-							<div class="mt-2 flex items-center gap-2 border-t border-surface-2 pt-2">
-								<span class="text-[10px] text-text-muted">Entrada</span>
+							<div class="mt-2 flex items-center gap-2 border-t border-border pt-2">
+								<span class="text-[10px] text-muted-foreground">Entrada</span>
 								<input
 									type="time"
 									value={assignment.check_in ?? ''}
 									onchange={(e) => setTime(assignment.id, 'check_in', e.currentTarget.value)}
-									class="w-[5.5rem] rounded-lg bg-surface-2 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-accent/50"
+									class="w-[5.5rem] rounded-lg bg-muted px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-primary/50"
 								/>
-								<span class="text-[10px] text-text-muted">Saída</span>
+								<span class="text-[10px] text-muted-foreground">Saída</span>
 								<input
 									type="time"
 									value={assignment.check_out ?? ''}
 									onchange={(e) => setTime(assignment.id, 'check_out', e.currentTarget.value)}
-									class="w-[5.5rem] rounded-lg bg-surface-2 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-accent/50"
+									class="w-[5.5rem] rounded-lg bg-muted px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-primary/50"
 								/>
 							</div>
 						</div>
@@ -295,14 +294,13 @@
 		{#if followingDate}
 			<div class="mb-5">
 				<div class="mb-3 flex items-center gap-2">
-					<span class="rounded-lg bg-surface-2 px-2.5 py-1 text-xs font-bold">
+					<Badge class="rounded-lg bg-muted px-2.5 py-1 font-bold text-foreground">
 						{getDayName(followingDate.date).toUpperCase()}
-					</span>
+					</Badge>
 					<span class="font-semibold">{formatDate(followingDate.date)}</span>
-					<span class="rounded-full px-2 py-0.5 text-xs font-bold
-						{followingAssigned.length >= followingDate.required_count ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}">
+					<Badge class="rounded-full font-bold {followingAssigned.length >= followingDate.required_count ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}">
 						{followingAssigned.length}/{followingDate.required_count}
-					</span>
+					</Badge>
 				</div>
 				{#each followingEvents as evt (evt.id)}
 					<div class="mb-2 rounded-xl bg-warning/10 px-3 py-2.5 ring-1 ring-warning/20">
@@ -311,14 +309,14 @@
 							<span class="text-sm font-medium">{evt.name}</span>
 						</div>
 						{#if evt.description}
-							<p class="mt-0.5 text-xs text-text-muted">{evt.description}</p>
+							<p class="mt-0.5 text-xs text-muted-foreground">{evt.description}</p>
 						{/if}
 						<div class="mt-1 flex flex-wrap gap-1.5 text-[10px]">
 							{#if evt.expected_attendees !== null}
 								<span class="rounded bg-info/15 px-1.5 py-0.5 text-info">{evt.expected_attendees} pessoas</span>
 							{/if}
 							{#if evt.reserved_tables}
-								<span class="rounded bg-surface-2 px-1.5 py-0.5">Mesas: {evt.reserved_tables}</span>
+								<span class="rounded bg-muted px-1.5 py-0.5">Mesas: {evt.reserved_tables}</span>
 							{/if}
 						</div>
 					</div>
@@ -327,8 +325,8 @@
 					{#each followingAssigned as assignment (assignment.id)}
 						{@const collab = collaborators.getById(assignment.collaborator_id)}
 						{#if collab}
-							<div class="flex items-center gap-3 rounded-xl bg-surface px-4 py-2.5">
-								<span class="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 text-xs font-bold">
+							<div class="flex items-center gap-3 rounded-xl bg-card px-4 py-2.5">
+								<span class="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-bold">
 									{collab.name.slice(0, 2).toUpperCase()}
 								</span>
 								<span class="text-sm font-medium">{collab.name}</span>
@@ -337,7 +335,7 @@
 						{/if}
 					{/each}
 					{#if followingAssigned.length === 0}
-						<p class="rounded-xl bg-surface px-4 py-3 text-center text-sm text-text-muted">Ninguém escalado ainda</p>
+						<p class="rounded-xl bg-card px-4 py-3 text-center text-sm text-muted-foreground">Ninguém escalado ainda</p>
 					{/if}
 				</div>
 			</div>
@@ -348,23 +346,23 @@
 			<div class="rounded-2xl bg-info/10 p-4 ring-1 ring-info/20">
 				<div class="mb-3 flex items-center justify-between">
 					<span class="text-xs font-bold uppercase tracking-wider text-info">Equipe Fixa</span>
-					<span class="text-xs text-text-muted">Presentes todos os dias</span>
+					<span class="text-xs text-muted-foreground">Presentes todos os dias</span>
 				</div>
 				<div class="flex flex-wrap gap-2">
 					{#each allFixed as collab (collab.id)}
 						{@const consumed = consumption.totalByCollaborator(collab.id, (pid) => products.getPrice(pid))}
-						<div class="flex items-center gap-2 rounded-xl bg-surface/60 px-3 py-2">
+						<div class="flex items-center gap-2 rounded-xl bg-card/60 px-3 py-2">
 							<span class="flex h-7 w-7 items-center justify-center rounded-full bg-info/20 text-xs font-bold text-info">
 								{collab.name.slice(0, 2).toUpperCase()}
 							</span>
 							<div>
 								<span class="text-sm font-medium">{collab.name}</span>
 								{#if consumed > 0}
-									<span class="ml-1 text-xs text-accent">{formatCurrency(consumed)}</span>
+									<span class="ml-1 text-xs text-primary">{formatCurrency(consumed)}</span>
 								{/if}
 							</div>
 							<a href="/consumo?person={collab.id}" class="rounded p-1 text-info/60 transition-all active:scale-90 hover:text-info" aria-label="Anotar consumo">
-								<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+								<Plus class="h-3.5 w-3.5" strokeWidth={2.5} />
 							</a>
 						</div>
 					{/each}

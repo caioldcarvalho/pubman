@@ -11,8 +11,16 @@
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatCurrency, formatDate, formatDateFull, getDayName, todayISO } from '$lib/utils';
 	import { formatPixKeyByType, inferPixKeyType, PIX_KEY_TYPES, type PixKeyType } from '$lib/pix';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import SquarePen from '@lucide/svelte/icons/square-pen';
+	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import X from '@lucide/svelte/icons/x';
+	import Check from '@lucide/svelte/icons/check';
 
-	const collab = $derived(collaborators.getById(page.params.id));
+	const collab = $derived(collaborators.getById(page.params.id!));
 	const entries = $derived(collab ? consumption.getByCollaborator(collab.id) : []);
 	const DISCOUNT = 0.20;
 	const getPrice = (id: string) => products.getById(id)?.price ?? 0;
@@ -278,25 +286,23 @@
 	<PageHeader title={collab.name} backHref="/colaboradores" />
 
 	<div class="px-4 py-4">
-		<div class="animate-in mb-4 rounded-2xl bg-surface p-5 shadow-lg shadow-black/20">
+		<div class="animate-in mb-4 rounded-2xl bg-card p-5 shadow-lg shadow-black/20">
 			<!-- Name -->
-			<div class="mb-4 border-b border-surface-2 pb-4">
+			<div class="mb-4 border-b border-border pb-4">
 				{#if editingName}
 					<div class="flex items-center gap-2">
-						<input
+						<Input
 							bind:value={editName}
 							placeholder="Nome"
-							class="flex-1 rounded-xl bg-surface-2 px-3 py-2 text-lg font-semibold outline-none focus:ring-2 focus:ring-accent/50"
+							class="flex-1 text-lg font-semibold"
 						/>
-						<button onclick={saveName} class="rounded-lg bg-accent px-3 py-2 text-xs font-medium text-white">Salvar</button>
-						<button onclick={() => (editingName = false)} class="rounded-lg bg-surface-2 px-3 py-2 text-xs font-medium text-text-muted">Cancelar</button>
+						<Button size="sm" onclick={saveName}>Salvar</Button>
+						<Button variant="secondary" size="sm" onclick={() => (editingName = false)}>Cancelar</Button>
 					</div>
 				{:else}
 					<button onclick={startEditName} class="flex w-full items-center justify-between text-left">
 						<span class="text-lg font-semibold">{collab.name}</span>
-						<svg class="h-4 w-4 text-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-						</svg>
+						<SquarePen class="h-4 w-4 text-muted-foreground" />
 					</button>
 				{/if}
 			</div>
@@ -304,7 +310,7 @@
 				<button
 					onclick={async () => { await collaborators.update(collab.id, { fixed: !collab.fixed }); toast.success(collab.fixed ? 'Agora é freela' : 'Agora é fixo'); }}
 					class="rounded-lg px-2.5 py-1 text-xs font-bold transition-all
-						{collab.fixed ? 'bg-info/20 text-info ring-1 ring-info/30' : 'bg-surface-2 text-text-muted'}"
+						{collab.fixed ? 'bg-info/20 text-info ring-1 ring-info/30' : 'bg-muted text-muted-foreground'}"
 				>
 					{collab.fixed ? 'FIXO' : 'FREELA'}
 				</button>
@@ -317,14 +323,14 @@
 
 			<!-- Role tags -->
 			<div class="mb-4">
-				<div class="mb-2 text-[10px] font-bold uppercase tracking-wider text-text-muted">Funções</div>
+				<div class="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Funções</div>
 				<div class="flex flex-wrap gap-1.5">
 					{#each ALL_ROLES as { value, label }}
 						{@const active = collab.roles.includes(value)}
 						<button
 							onclick={() => toggleRole(value)}
 							class="rounded-lg px-3 py-1.5 text-xs font-medium transition-all
-								{active ? 'bg-accent text-white shadow-md shadow-accent/20' : 'bg-surface-2 text-text-muted'}"
+								{active ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20' : 'bg-muted text-muted-foreground'}"
 						>
 							{label}
 						</button>
@@ -333,53 +339,52 @@
 			</div>
 
 			<div class="flex items-center justify-between">
-				<span class="text-sm text-text-muted">Valor/dia</span>
+				<span class="text-sm text-muted-foreground">Valor/dia</span>
 				{#if editing}
 					<div class="flex items-center gap-2">
-						<input
+						<Input
 							bind:value={editRate}
 							type="number"
 							min="0"
-							class="w-24 rounded-xl bg-surface-2 px-3 py-1.5 text-right text-sm outline-none focus:ring-2 focus:ring-accent/50"
+							class="w-24 text-right"
 						/>
-						<button onclick={saveRate} class="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white">Salvar</button>
+						<Button size="sm" onclick={saveRate}>Salvar</Button>
 					</div>
 				{:else}
-					<button onclick={startEdit} class="rounded-lg bg-surface-2 px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-surface-3">{formatCurrency(collab.base_rate)}</button>
+					<button onclick={startEdit} class="rounded-lg bg-muted px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-accent">{formatCurrency(collab.base_rate)}</button>
 				{/if}
 			</div>
 
 			<div class="mt-3">
 				{#if editingPix}
 					<div class="space-y-2">
-						<span class="text-sm text-text-muted">Chave PIX</span>
+						<span class="text-sm text-muted-foreground">Chave PIX</span>
 						<div class="flex flex-wrap gap-1.5">
 							{#each PIX_KEY_TYPES as { value, label }}
 								<button
 									type="button"
 									onclick={() => (editPixType = value)}
 									class="rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all
-										{editPixType === value ? 'bg-accent text-white shadow-md shadow-accent/20' : 'bg-surface-2 text-text-muted'}"
+										{editPixType === value ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20' : 'bg-muted text-muted-foreground'}"
 								>
 									{label}
 								</button>
 							{/each}
 						</div>
-						<input
+						<Input
 							bind:value={editPixKey}
 							inputmode={editPixType === 'cpf' || editPixType === 'cnpj' || editPixType === 'telefone' ? 'tel' : editPixType === 'email' ? 'email' : 'text'}
 							placeholder={editPixType === 'cpf' ? '000.000.000-00' : editPixType === 'cnpj' ? '00.000.000/0000-00' : editPixType === 'telefone' ? '(11) 99999-9999' : editPixType === 'email' ? 'voce@email.com' : 'chave aleatória'}
-							class="w-full rounded-xl bg-surface-2 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/50"
 						/>
 						<div class="flex gap-2">
-							<button onclick={savePix} class="flex-1 rounded-lg bg-accent px-3 py-2 text-xs font-medium text-white">Salvar</button>
-							<button onclick={() => (editingPix = false)} class="rounded-lg bg-surface-2 px-3 py-2 text-xs font-medium text-text-muted">Cancelar</button>
+							<Button size="sm" class="flex-1" onclick={savePix}>Salvar</Button>
+							<Button variant="secondary" size="sm" onclick={() => (editingPix = false)}>Cancelar</Button>
 						</div>
 					</div>
 				{:else}
 					<div class="flex items-center justify-between">
-						<span class="text-sm text-text-muted">Chave PIX</span>
-						<button onclick={startEditPix} class="max-w-[55%] truncate rounded-lg bg-surface-2 px-3 py-1.5 text-right text-xs font-medium transition-colors hover:bg-surface-3">
+						<span class="text-sm text-muted-foreground">Chave PIX</span>
+						<button onclick={startEditPix} class="max-w-[55%] truncate rounded-lg bg-muted px-3 py-1.5 text-right text-xs font-medium transition-colors hover:bg-accent">
 							{collab.pix_key ?? 'Adicionar'}
 						</button>
 					</div>
@@ -393,61 +398,58 @@
 				<h2 class="font-semibold">Dias Trabalhados</h2>
 				<div class="flex items-center gap-2">
 					<span class="rounded-lg bg-success/15 px-2.5 py-1 text-sm font-semibold text-success">{allAssignments.length} dias</span>
-					<button
-						onclick={openAddDay}
-						class="rounded-lg bg-accent px-2.5 py-1 text-sm font-medium text-white shadow-md shadow-accent/20 active:scale-95"
-					>+ Dia</button>
+					<Button size="xs" class="shadow-md shadow-primary/20" onclick={openAddDay}>+ Dia</Button>
 				</div>
 			</div>
 
 			<!-- Add day form -->
 			{#if showAddDay}
-				<div class="mb-4 rounded-2xl bg-surface p-4 shadow-lg shadow-black/20 ring-1 ring-accent/20 space-y-3">
+				<div class="mb-4 rounded-2xl bg-card p-4 shadow-lg shadow-black/20 ring-1 ring-primary/20 space-y-3">
 					<p class="text-sm font-medium">Adicionar dia trabalhado</p>
 					<div class="flex items-center gap-2">
-						<label class="text-xs text-text-muted">Data</label>
-						<input type="date" bind:value={addDayDate} class="flex-1 rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
+						<Label for="add-day-date" class="text-xs text-muted-foreground">Data</Label>
+						<input id="add-day-date" type="date" bind:value={addDayDate} class="flex-1 rounded-lg bg-muted px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary/50" />
 					</div>
 					<div class="flex items-center gap-2">
-						<label class="text-xs text-text-muted">Valor</label>
-						<input type="number" min="0" bind:value={addDayRate} class="w-24 rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
+						<Label for="add-day-rate" class="text-xs text-muted-foreground">Valor</Label>
+						<Input id="add-day-rate" type="number" min="0" bind:value={addDayRate} class="w-24" />
 					</div>
 					<div class="flex items-center gap-2">
-						<label class="text-xs text-text-muted">Entrada</label>
-						<input type="time" bind:value={addDayIn} class="rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
-						<label class="text-xs text-text-muted">Saída</label>
-						<input type="time" bind:value={addDayOut} class="rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
+						<Label for="add-day-in" class="text-xs text-muted-foreground">Entrada</Label>
+						<input id="add-day-in" type="time" bind:value={addDayIn} class="rounded-lg bg-muted px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary/50" />
+						<Label for="add-day-out" class="text-xs text-muted-foreground">Saída</Label>
+						<input id="add-day-out" type="time" bind:value={addDayOut} class="rounded-lg bg-muted px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary/50" />
 					</div>
 					<div class="flex gap-2">
-						<button onclick={confirmAddDay} class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white">Adicionar</button>
-						<button onclick={() => (showAddDay = false)} class="rounded-lg bg-surface-2 px-4 py-2 text-sm font-medium text-text-muted">Cancelar</button>
+						<Button onclick={confirmAddDay}>Adicionar</Button>
+						<Button variant="secondary" onclick={() => (showAddDay = false)}>Cancelar</Button>
 					</div>
 				</div>
 			{/if}
 
 			<!-- Month navigation -->
-			<div class="mb-3 flex items-center justify-between rounded-xl bg-surface p-3 shadow-md shadow-black/10">
-				<button onclick={prevMonth} class="rounded-lg p-1.5 text-text-muted active:scale-90">
-					<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6" /></svg>
-				</button>
+			<div class="mb-3 flex items-center justify-between rounded-xl bg-card p-3 shadow-md shadow-black/10">
+				<Button variant="ghost" size="icon-sm" class="text-muted-foreground" onclick={prevMonth} aria-label="Mês anterior">
+					<ChevronLeft />
+				</Button>
 				<span class="text-sm font-semibold capitalize">
 					{calendarMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
 				</span>
-				<button onclick={nextMonth} class="rounded-lg p-1.5 text-text-muted active:scale-90">
-					<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" /></svg>
-				</button>
+				<Button variant="ghost" size="icon-sm" class="text-muted-foreground" onclick={nextMonth} aria-label="Próximo mês">
+					<ChevronRight />
+				</Button>
 			</div>
 
 			<!-- Calendar grid -->
-			<div class="mb-4 rounded-xl bg-surface p-3 shadow-md shadow-black/10">
-				<div class="mb-1 grid grid-cols-7 text-center text-[10px] font-bold text-text-muted">
+			<div class="mb-4 rounded-xl bg-card p-3 shadow-md shadow-black/10">
+				<div class="mb-1 grid grid-cols-7 text-center text-[10px] font-bold text-muted-foreground">
 					<span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
 				</div>
 				<div class="grid grid-cols-7 gap-0.5 text-center text-xs">
 					{#each calendarDays as day (day.date)}
 						<span
 							class="flex h-8 w-8 items-center justify-center rounded-full mx-auto
-								{!day.inMonth ? 'text-text-muted/30' : ''}
+								{!day.inMonth ? 'text-muted-foreground/30' : ''}
 								{day.worked ? 'bg-success/20 text-success font-bold' : ''}"
 						>
 							{new Date(day.date + 'T12:00:00').getDate()}
@@ -458,7 +460,7 @@
 
 			<!-- Assignment list -->
 			{#if allAssignments.length > 0}
-				<div class="divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
+				<div class="divide-y divide-border rounded-2xl bg-card shadow-md shadow-black/10">
 					{#each allAssignments as a (a.id)}
 						{@const hours = getHoursWorked(a.check_in, a.check_out)}
 						{@const effective = collab ? getEffectiveRate(a, collab.base_rate) : 0}
@@ -466,29 +468,29 @@
 							<div class="px-4 py-3 space-y-2">
 								<div class="flex items-center justify-between">
 									<span class="text-sm font-medium">{getDayName(a.date)} {formatDate(a.date)}</span>
-									<button onclick={() => (editingAssignment = null)} class="text-xs text-text-muted">Cancelar</button>
+									<button onclick={() => (editingAssignment = null)} class="text-xs text-muted-foreground">Cancelar</button>
 								</div>
 								<div class="flex items-center gap-2">
-									<label class="text-[10px] text-text-muted">Valor</label>
-									<input type="number" min="0" bind:value={editAssignRate} class="w-20 rounded-lg bg-surface-2 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-accent/50" />
+									<Label for="edit-assign-rate" class="text-[10px] text-muted-foreground">Valor</Label>
+									<Input id="edit-assign-rate" type="number" min="0" bind:value={editAssignRate} class="w-20" />
 								</div>
 								<div class="flex items-center gap-2">
-									<label class="text-[10px] text-text-muted">Entrada</label>
-									<input type="time" bind:value={editAssignIn} class="rounded-lg bg-surface-2 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-accent/50" />
-									<label class="text-[10px] text-text-muted">Saída</label>
-									<input type="time" bind:value={editAssignOut} class="rounded-lg bg-surface-2 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-accent/50" />
+									<Label for="edit-assign-in" class="text-[10px] text-muted-foreground">Entrada</Label>
+									<input id="edit-assign-in" type="time" bind:value={editAssignIn} class="rounded-lg bg-muted px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-primary/50" />
+									<Label for="edit-assign-out" class="text-[10px] text-muted-foreground">Saída</Label>
+									<input id="edit-assign-out" type="time" bind:value={editAssignOut} class="rounded-lg bg-muted px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-primary/50" />
 								</div>
 								<div class="flex gap-2">
-									<button onclick={saveAssignment} class="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white">Salvar</button>
-									<button onclick={() => removeDay(a.id, a.date_id)} class="rounded-lg bg-surface-2 px-3 py-1.5 text-xs font-medium text-accent">Remover dia</button>
+									<Button size="sm" onclick={saveAssignment}>Salvar</Button>
+									<Button variant="destructive" size="sm" onclick={() => removeDay(a.id, a.date_id)}>Remover dia</Button>
 								</div>
 							</div>
 						{:else}
 							<div class="flex items-center">
-								<button onclick={() => startEditAssignment(a)} class="flex flex-1 items-center justify-between px-4 py-3 text-left transition-colors active:bg-surface-2">
+								<button onclick={() => startEditAssignment(a)} class="flex flex-1 items-center justify-between px-4 py-3 text-left transition-colors active:bg-muted">
 									<div class="text-sm">
 										<span class="font-medium">{getDayName(a.date)}</span>
-										<span class="text-text-muted"> {formatDate(a.date)}</span>
+										<span class="text-muted-foreground"> {formatDate(a.date)}</span>
 										{#if hours !== null}
 											<span class="ml-1 text-info text-xs">({hours.toFixed(1)}h)</span>
 										{/if}
@@ -497,10 +499,10 @@
 								</button>
 								<button
 									onclick={() => removeDay(a.id, a.date_id)}
-									class="mr-3 rounded-lg p-1.5 text-text-muted transition-colors hover:bg-accent-soft hover:text-accent active:scale-90"
+									class="mr-3 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/15 hover:text-primary active:scale-90"
 									aria-label="Remover dia"
 								>
-									<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+									<X class="h-4 w-4" />
 								</button>
 							</div>
 						{/if}
@@ -511,34 +513,32 @@
 
 		<div class="mb-3 flex items-center justify-between" style="animation-delay: 80ms">
 			<h2 class="font-semibold">Consumo</h2>
-			<span class="rounded-lg bg-accent-soft px-2.5 py-1 text-sm font-semibold text-accent">{formatCurrency(total)}</span>
+			<span class="rounded-lg bg-primary/15 px-2.5 py-1 text-sm font-semibold text-primary">{formatCurrency(total)}</span>
 		</div>
 
 		{#if entries.length === 0}
-			<p class="py-10 text-center text-sm text-text-muted">Nenhum consumo registrado</p>
+			<p class="py-10 text-center text-sm text-muted-foreground">Nenhum consumo registrado</p>
 		{:else}
-			<div class="stagger divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
+			<div class="stagger divide-y divide-border rounded-2xl bg-card shadow-md shadow-black/10">
 				{#each entries as entry (entry.id)}
 					{@const product = entry.product_id ? products.getById(entry.product_id) : null}
 					{@const name = entry.custom_name ?? product?.name ?? 'Produto removido'}
 					<div class="flex items-center justify-between px-4 py-3">
 						<div>
 							<div class="text-sm font-medium">{name}</div>
-							<div class="text-xs text-text-muted">
+							<div class="text-xs text-muted-foreground">
 								{formatDate(entry.date)} &middot; {entry.quantity}x
-								{#if entry.split_count > 1}<span class="text-accent"> &middot; dividido ÷{entry.split_count}</span>{/if}
+								{#if entry.split_count > 1}<span class="text-primary"> &middot; dividido ÷{entry.split_count}</span>{/if}
 							</div>
 						</div>
 						<div class="flex items-center gap-3">
 							<span class="text-sm font-medium">{formatCurrency(entryValue(entry, getPrice))}</span>
 							<button
 								onclick={async () => { await consumption.remove(entry.id); toast.info('Consumo removido'); }}
-								class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-accent-soft hover:text-accent"
+								class="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/15 hover:text-primary"
 								aria-label="Remover"
 							>
-								<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-									<path d="M18 6L6 18M6 6l12 12" />
-								</svg>
+								<X class="h-4 w-4" />
 							</button>
 						</div>
 					</div>
@@ -553,52 +553,51 @@
 					{#if totalReimbursements > 0}
 						<span class="rounded-lg bg-warning/15 px-2.5 py-1 text-sm font-semibold text-warning">{formatCurrency(totalReimbursements)}</span>
 					{/if}
-					<button
-						onclick={() => { showAddReimbursement = !showAddReimbursement; reimbDate = todayISO(); }}
-						class="rounded-lg bg-accent px-2.5 py-1 text-sm font-medium text-white shadow-md shadow-accent/20 active:scale-95"
-					>+ Ressarcimento</button>
+					<Button size="xs" class="shadow-md shadow-primary/20" onclick={() => { showAddReimbursement = !showAddReimbursement; reimbDate = todayISO(); }}>
+						+ Ressarcimento
+					</Button>
 				</div>
 			</div>
 
 			{#if showAddReimbursement}
-				<div class="mb-3 rounded-2xl bg-surface p-4 shadow-lg shadow-black/20 ring-1 ring-accent/20 space-y-3">
+				<div class="mb-3 rounded-2xl bg-card p-4 shadow-lg shadow-black/20 ring-1 ring-primary/20 space-y-3">
 					<div class="flex items-center gap-2">
-						<label class="text-xs text-text-muted">Valor</label>
-						<input type="number" bind:value={reimbAmount} step="0.01" min="0" class="w-28 rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
+						<Label for="reimb-amount" class="text-xs text-muted-foreground">Valor</Label>
+						<Input id="reimb-amount" type="number" bind:value={reimbAmount} step="0.01" min="0" class="w-28" />
 					</div>
 					<div class="flex items-center gap-2">
-						<label class="text-xs text-text-muted">Data</label>
-						<input type="date" bind:value={reimbDate} class="rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
+						<Label for="reimb-date" class="text-xs text-muted-foreground">Data</Label>
+						<input id="reimb-date" type="date" bind:value={reimbDate} class="rounded-lg bg-muted px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary/50" />
 					</div>
 					<div class="flex items-center gap-2">
-						<label class="text-xs text-text-muted">Nota</label>
-						<input type="text" bind:value={reimbNotes} placeholder="Ex: Uber, gelo, etc." class="flex-1 rounded-lg bg-surface-2 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/50" />
+						<Label for="reimb-notes" class="text-xs text-muted-foreground">Nota</Label>
+						<Input id="reimb-notes" type="text" bind:value={reimbNotes} placeholder="Ex: Uber, gelo, etc." class="flex-1" />
 					</div>
 					<div class="flex gap-2">
-						<button onclick={addReimbursement} class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white">Adicionar</button>
-						<button onclick={() => (showAddReimbursement = false)} class="rounded-lg bg-surface-2 px-4 py-2 text-sm font-medium text-text-muted">Cancelar</button>
+						<Button onclick={addReimbursement}>Adicionar</Button>
+						<Button variant="secondary" onclick={() => (showAddReimbursement = false)}>Cancelar</Button>
 					</div>
 				</div>
 			{/if}
 
 			{#if reimbursements.length === 0}
-				<p class="text-center text-sm text-text-muted py-4">Nenhum ressarcimento pendente</p>
+				<p class="text-center text-sm text-muted-foreground py-4">Nenhum ressarcimento pendente</p>
 			{:else}
-				<div class="divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
+				<div class="divide-y divide-border rounded-2xl bg-card shadow-md shadow-black/10">
 					{#each reimbursements as p (p.id)}
 						<div class="flex items-center justify-between px-4 py-3">
 							<div>
 								<div class="text-sm font-medium">{p.notes || 'Ressarcimento'}</div>
-								<div class="text-xs text-text-muted">{formatDate(p.date)}</div>
+								<div class="text-xs text-muted-foreground">{formatDate(p.date)}</div>
 							</div>
 							<div class="flex items-center gap-3">
 								<span class="text-sm font-semibold text-warning">{formatCurrency(p.amount)}</span>
 								<button
 									onclick={async () => { await purchases.markReimbursed(p.id); toast.info('Marcado como pago'); }}
-									class="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-success/15 hover:text-success"
+									class="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-success/15 hover:text-success"
 									aria-label="Marcar como pago"
 								>
-									<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" /></svg>
+									<Check class="h-4 w-4" />
 								</button>
 							</div>
 						</div>
@@ -612,14 +611,14 @@
 			<div class="mb-3 flex items-center justify-between">
 				<h2 class="font-semibold">Histórico de Pagamentos</h2>
 				{#if paymentHistory.length > 0}
-					<span class="rounded-lg bg-surface-2 px-2.5 py-1 text-xs font-medium text-text-muted">{paymentHistory.length}</span>
+					<span class="rounded-lg bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">{paymentHistory.length}</span>
 				{/if}
 			</div>
 
 			{#if paymentHistory.length === 0}
-				<p class="text-center text-sm text-text-muted py-4">Nenhum pagamento registrado</p>
+				<p class="text-center text-sm text-muted-foreground py-4">Nenhum pagamento registrado</p>
 			{:else}
-				<div class="divide-y divide-surface-2 rounded-2xl bg-surface shadow-md shadow-black/10">
+				<div class="divide-y divide-border rounded-2xl bg-card shadow-md shadow-black/10">
 					{#each paymentHistory as pmt (pmt.id)}
 						{@const expanded = expandedPayment === pmt.id}
 						{@const pmtAssignments = schedule.getAssignmentsByPayment(pmt.id)}
@@ -628,24 +627,24 @@
 						<div>
 							<button
 								onclick={() => togglePayment(pmt.id)}
-								class="flex w-full items-center justify-between px-4 py-3 text-left transition-colors active:bg-surface-2"
+								class="flex w-full items-center justify-between px-4 py-3 text-left transition-colors active:bg-muted"
 							>
 								<div>
 									<div class="text-sm font-medium">{formatDateFull(pmt.paid_at.slice(0, 10))}</div>
-									<div class="mt-0.5 text-[11px] text-text-muted">
+									<div class="mt-0.5 text-[11px] text-muted-foreground">
 										{formatCurrency(pmt.total_earned)} ganhos · {formatCurrency(pmt.total_consumed)} consumo{pmt.total_reimbursed > 0 ? ` · +${formatCurrency(pmt.total_reimbursed)} ressarc.` : ''}
 									</div>
 								</div>
 								<div class="flex items-center gap-2">
 									<span class="rounded-lg bg-success/15 px-2.5 py-1 text-sm font-bold text-success">{formatCurrency(pmt.net_amount)}</span>
-									<svg class="h-4 w-4 text-text-muted transition-transform {expanded ? 'rotate-90' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" /></svg>
+									<ChevronRight class="h-4 w-4 text-muted-foreground transition-transform {expanded ? 'rotate-90' : ''}" />
 								</div>
 							</button>
 							{#if expanded}
-								<div class="space-y-3 bg-surface-2/40 px-4 py-3 text-xs">
+								<div class="space-y-3 bg-muted/40 px-4 py-3 text-xs">
 									{#if pmtAssignments.length > 0}
 										<div>
-											<div class="mb-1.5 font-bold uppercase tracking-wider text-text-muted text-[10px]">Dias pagos</div>
+											<div class="mb-1.5 font-bold uppercase tracking-wider text-muted-foreground text-[10px]">Dias pagos</div>
 											{#each pmtAssignments as a (a.id)}
 												{@const sd = schedule.getDateById(a.date_id)}
 												<div class="flex justify-between py-0.5">
@@ -657,30 +656,30 @@
 									{/if}
 									{#if pmtConsumption.length > 0}
 										<div>
-											<div class="mb-1.5 font-bold uppercase tracking-wider text-text-muted text-[10px]">Consumo descontado</div>
+											<div class="mb-1.5 font-bold uppercase tracking-wider text-muted-foreground text-[10px]">Consumo descontado</div>
 											{#each pmtConsumption as e (e.id)}
 												{@const product = e.product_id ? products.getById(e.product_id) : null}
 												{@const name = e.custom_name ?? product?.name ?? 'Produto removido'}
 												<div class="flex justify-between py-0.5">
-													<span>{name} <span class="text-text-muted">x{e.quantity}{#if e.split_count > 1} ÷{e.split_count}{/if}</span></span>
-													<span class="font-medium text-accent">-{formatCurrency(entryValue(e, getPrice))}</span>
+													<span>{name} <span class="text-muted-foreground">x{e.quantity}{#if e.split_count > 1} ÷{e.split_count}{/if}</span></span>
+													<span class="font-medium text-primary">-{formatCurrency(entryValue(e, getPrice))}</span>
 												</div>
 											{/each}
 										</div>
 									{/if}
 									{#if pmtPurchases.length > 0}
 										<div>
-											<div class="mb-1.5 font-bold uppercase tracking-wider text-text-muted text-[10px]">Ressarcimentos</div>
+											<div class="mb-1.5 font-bold uppercase tracking-wider text-muted-foreground text-[10px]">Ressarcimentos</div>
 											{#each pmtPurchases as p (p.id)}
 												<div class="flex justify-between py-0.5">
-													<span>{p.notes || 'Ressarcimento'} <span class="text-text-muted">{formatDate(p.date)}</span></span>
+													<span>{p.notes || 'Ressarcimento'} <span class="text-muted-foreground">{formatDate(p.date)}</span></span>
 													<span class="font-medium text-warning">+{formatCurrency(p.amount)}</span>
 												</div>
 											{/each}
 										</div>
 									{/if}
 									{#if pmt.pix_key_used}
-										<div class="text-[10px] text-text-muted">PIX usado: {pmt.pix_key_used}</div>
+										<div class="text-[10px] text-muted-foreground">PIX usado: {pmt.pix_key_used}</div>
 									{/if}
 								</div>
 							{/if}
@@ -692,5 +691,5 @@
 	</div>
 {:else}
 	<PageHeader title="Não encontrado" backHref="/colaboradores" />
-	<p class="py-8 text-center text-text-muted">Colaborador não encontrado.</p>
+	<p class="py-8 text-center text-muted-foreground">Colaborador não encontrado.</p>
 {/if}
