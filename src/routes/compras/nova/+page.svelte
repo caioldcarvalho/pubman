@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { purchases } from '$lib/stores/purchases.svelte';
 	import { tasks } from '$lib/stores/tasks.svelte';
@@ -11,10 +12,13 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import Check from '@lucide/svelte/icons/check';
 
+	// Itens pré-marcados vindos da lista de compras (/lista → "Adicionar à compra")
+	const preselected = page.url.searchParams.get('items')?.split(',').filter(Boolean) ?? [];
+
 	let amount = $state(0);
 	let date = $state(todayISO());
 	let notes = $state('');
-	let pickedIds = $state<string[]>([]);
+	let pickedIds = $state<string[]>(preselected);
 
 	const pickedDescriptions = $derived(
 		tasks.shopping.filter((t) => pickedIds.includes(t.id)).map((t) => t.description)
