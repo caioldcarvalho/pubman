@@ -6,6 +6,7 @@ export interface Task {
 	id: string;
 	kind: TaskKind;
 	description: string;
+	done: boolean;
 	created_at: string;
 }
 
@@ -40,6 +41,26 @@ class TaskStore {
 			.single();
 		if (data) this.list.push(data);
 		return data;
+	}
+
+	/** Adiciona vários itens de uma vez (ex: texto colado, um por linha). */
+	async addMany(kind: TaskKind, descriptions: string[]): Promise<Task[]> {
+		const rows = descriptions
+			.map((d) => d.trim())
+			.filter(Boolean)
+			.map((description) => ({ kind, description }));
+		if (rows.length === 0) return [];
+		const { data } = await supabase.from('tasks').insert(rows).select();
+		if (data) this.list.push(...data);
+		return data ?? [];
+	}
+
+	async toggleDone(id: string) {
+		const task = this.list.find((t) => t.id === id);
+		if (!task) return;
+		const done = !task.done;
+		await supabase.from('tasks').update({ done }).eq('id', id);
+		task.done = done;
 	}
 
 	async remove(id: string) {
