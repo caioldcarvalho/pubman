@@ -392,10 +392,16 @@ class ScheduleStore {
 				return sd && sd.date <= today;
 			})
 			.map((a) => a.id);
+		return this.settleAssignmentsByIds(ids, paymentId);
+	}
+
+	/** Liquida apenas as escalas informadas (seleção parcial de dias no pagamento). */
+	async settleAssignmentsByIds(ids: string[], paymentId: string): Promise<string[]> {
 		if (ids.length === 0) return [];
 		await supabase.from('assignments').update({ payment_id: paymentId }).in('id', ids);
+		const idSet = new Set(ids);
 		for (const a of this.assignments) {
-			if (ids.includes(a.id)) a.payment_id = paymentId;
+			if (idSet.has(a.id)) a.payment_id = paymentId;
 		}
 		return ids;
 	}
