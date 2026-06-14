@@ -22,6 +22,21 @@
 		collab ? schedule.getPastAssignments(collab.id, todayISO()) : []
 	);
 
+	// Dias desmarcados ficam de fora deste pagamento (continuam pendentes).
+	// Guardamos os excluídos: assim todo dia novo já entra selecionado por padrão.
+	let deselectedDays = $state<Set<string>>(new Set());
+
+	function toggleDay(id: string) {
+		const next = new Set(deselectedDays);
+		if (next.has(id)) next.delete(id);
+		else next.add(id);
+		deselectedDays = next;
+	}
+
+	const selectedAssignments = $derived(
+		assignments.filter((a) => !deselectedDays.has(a.id))
+	);
+
 	const entries = $derived(collab ? consumption.getByCollaborator(collab.id) : []);
 
 	const reimbursements = $derived(
@@ -29,7 +44,7 @@
 	);
 
 	const totalEarned = $derived(
-		collab ? assignments.reduce((sum, a) => sum + (a.rate_override ?? collab.base_rate), 0) : 0
+		collab ? selectedAssignments.reduce((sum, a) => sum + (a.rate_override ?? collab.base_rate), 0) : 0
 	);
 
 	const DISCOUNT = 0.20;
@@ -57,8 +72,12 @@
 		await schedule.updateAssignmentRate(assignmentId, numVal);
 	}
 
+	const hasSomethingToPay = $derived(
+		selectedAssignments.length > 0 || entries.length > 0 || reimbursements.length > 0
+	);
+
 	async function markPaid() {
-		if (!collab) return;
+		if (!collab || !hasSomethingToPay) return;
 		const payment = await payments.create({
 			collaborator_id: collab.id,
 			total_earned: totalEarned,
@@ -72,11 +91,16 @@
 			return;
 		}
 		await Promise.all([
-			schedule.settleAssignmentsForCollaborator(collab.id, payment.id, todayISO()),
+			schedule.settleAssignmentsByIds(selectedAssignments.map((a) => a.id), payment.id),
 			consumption.settleByCollaborator(collab.id, payment.id),
 			purchases.settleByCollaborator(collab.id, payment.id),
 		]);
-		toast.success(`Pagamento de ${collab.name} finalizado`);
+		const leftover = assignments.length - selectedAssignments.length;
+		toast.success(
+			leftover > 0
+				? `Pagamento parcial de ${collab.name} (${leftover} dia${leftover !== 1 ? 's' : ''} pendente${leftover !== 1 ? 's' : ''})`
+				: `Pagamento de ${collab.name} finalizado`
+		);
 		goto('/pagamentos');
 	}
 
@@ -172,18 +196,38 @@
 		{/if}
 
 		<!-- Days worked -->
-		<h2 class="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">Dias trabalhados</h2>
+		<div class="mb-2 flex items-center justify-between">
+			<h2 class="text-sm font-bold uppercase tracking-wider text-muted-foreground">Dias trabalhados</h2>
+			{#if assignments.length > 0}
+				<span class="text-[10px] text-muted-foreground">toque no dia para excluir</span>
+			{/if}
+		</div>
 		{#if assignments.length === 0}
 			<p class="mb-5 text-sm text-muted-foreground">Nenhum dia registrado</p>
 		{:else}
 			<div class="stagger mb-5 divide-y divide-border rounded-2xl bg-card shadow-md shadow-black/10">
 				{#each assignments as assignment (assignment.id)}
 					{@const dateStr = getDateForAssignment(assignment)}
-					<div class="flex items-center justify-between px-4 py-3">
-						<div class="text-sm">
-							<span class="font-medium">{getDayName(dateStr)}</span>
-							<span class="text-muted-foreground"> {formatDate(dateStr)}</span>
-						</div>
+					{@const included = !deselectedDays.has(assignment.id)}
+					<div class="flex items-center justify-between gap-2 px-4 py-3 {included ? '' : 'opacity-40'}">
+						<button
+							type="button"
+							onclick={() => toggleDay(assignment.id)}
+							aria-pressed={included}
+							aria-label="{included ? 'Excluir' : 'Incluir'} {getDayName(dateStr)} {formatDate(dateStr)} do pagamento"
+							class="-my-1 flex flex-1 items-center gap-2 py-1 text-left text-sm"
+						>
+							<span
+								class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-all
+									{included ? 'border-success bg-success/20' : 'border-muted-foreground bg-transparent'}"
+							>
+								{#if included}
+									<span class="h-1.5 w-1.5 rounded-full bg-success"></span>
+								{/if}
+							</span>
+							<span class="{included ? 'font-medium' : 'font-medium line-through'}">{getDayName(dateStr)}</span>
+							<span class="text-muted-foreground {included ? '' : 'line-through'}">{formatDate(dateStr)}</span>
+						</button>
 						<Input
 							type="number"
 							value={assignment.rate_override ?? collab.base_rate}
@@ -274,9 +318,14 @@
 		<Button
 			size="lg"
 			onclick={markPaid}
-			class="pressable h-auto w-full rounded-2xl bg-success py-3.5 font-semibold text-background shadow-lg shadow-success/20 hover:bg-success/90"
+			disabled={!hasSomethingToPay}
+			class="pressable h-auto w-full rounded-2xl bg-success py-3.5 font-semibold text-background shadow-lg shadow-success/20 hover:bg-success/90 disabled:opacity-50"
 		>
-			Marcar como Pago
+			{#if selectedAssignments.length < assignments.length}
+				Pagar {selectedAssignments.length} de {assignments.length} dias
+			{:else}
+				Marcar como Pago
+			{/if}
 		</Button>
 	</div>
 {:else}
