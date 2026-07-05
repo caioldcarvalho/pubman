@@ -134,16 +134,14 @@ class ConsumptionStore {
 		this.list = this.list.filter((c) => c.collaborator_id !== collaboratorId);
 	}
 
-	async settleByCollaborator(collaboratorId: string, paymentId: string): Promise<string[]> {
-		const pendingIds = this.list
-			.filter((c) => c.collaborator_id === collaboratorId && !c.payment_id)
-			.map((c) => c.id);
-		if (pendingIds.length === 0) return [];
-		await supabase.from('consumption').update({ payment_id: paymentId }).in('id', pendingIds);
+	/** Link the given consumption entries to a payment (settle only what was selected). */
+	async settleByIds(ids: string[], paymentId: string): Promise<void> {
+		if (ids.length === 0) return;
+		await supabase.from('consumption').update({ payment_id: paymentId }).in('id', ids);
+		const idSet = new Set(ids);
 		for (const c of this.list) {
-			if (pendingIds.includes(c.id)) c.payment_id = paymentId;
+			if (idSet.has(c.id)) c.payment_id = paymentId;
 		}
-		return pendingIds;
 	}
 }
 

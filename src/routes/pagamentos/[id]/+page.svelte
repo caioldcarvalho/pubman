@@ -39,6 +39,34 @@
 
 	const entries = $derived(collab ? consumption.getByCollaborator(collab.id) : []);
 
+	// Data de corte: o consumo até o último dia trabalhado que está sendo pago entra
+	// neste pagamento; o que veio depois pertence ao próximo. Sem dias selecionados
+	// (pagamento só de consumo) o corte é hoje, incluindo tudo o que está pendente.
+	const cutoffDate = $derived.by(() => {
+		const dates = selectedAssignments
+			.map((a) => getDateForAssignment(a))
+			.filter((d) => d !== '');
+		if (dates.length === 0) return todayISO();
+		return dates.reduce((max, d) => (d > max ? d : max), dates[0]);
+	});
+
+	// Escolhas manuais sobrescrevem o corte automático (válvula de escape).
+	let manualConsumption = $state<Map<string, boolean>>(new Map());
+
+	function isEntryIncluded(entry: { id: string; date: string }): boolean {
+		const manual = manualConsumption.get(entry.id);
+		if (manual !== undefined) return manual;
+		return entry.date <= cutoffDate;
+	}
+
+	function toggleEntry(entry: { id: string; date: string }) {
+		const next = new Map(manualConsumption);
+		next.set(entry.id, !isEntryIncluded(entry));
+		manualConsumption = next;
+	}
+
+	const includedEntries = $derived(entries.filter((e) => isEntryIncluded(e)));
+
 	const reimbursements = $derived(
 		collab ? purchases.pendingByCollaborator(collab.id) : []
 	);
@@ -47,10 +75,9 @@
 		collab ? selectedAssignments.reduce((sum, a) => sum + (a.rate_override ?? collab.base_rate), 0) : 0
 	);
 
-	const DISCOUNT = 0.20;
 	const getPrice = (id: string) => products.getById(id)?.price ?? 0;
 	const totalConsumed = $derived(
-		entries.reduce((sum, e) => sum + entryValue(e, getPrice), 0)
+		includedEntries.reduce((sum, e) => sum + entryValue(e, getPrice), 0)
 	);
 
 	const totalReimbursed = $derived(
@@ -73,7 +100,7 @@
 	}
 
 	const hasSomethingToPay = $derived(
-		selectedAssignments.length > 0 || entries.length > 0 || reimbursements.length > 0
+		selectedAssignments.length > 0 || includedEntries.length > 0 || reimbursements.length > 0
 	);
 
 	async function markPaid() {
@@ -92,7 +119,7 @@
 		}
 		await Promise.all([
 			schedule.settleAssignmentsByIds(selectedAssignments.map((a) => a.id), payment.id),
-			consumption.settleByCollaborator(collab.id, payment.id),
+			consumption.settleByIds(includedEntries.map((e) => e.id), payment.id),
 			purchases.settleByCollaborator(collab.id, payment.id),
 		]);
 		const leftover = assignments.length - selectedAssignments.length;
@@ -240,7 +267,12 @@
 		{/if}
 
 		<!-- Consumption -->
-		<h2 class="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">Consumo</h2>
+		<div class="mb-2 flex items-center justify-between">
+			<h2 class="text-sm font-bold uppercase tracking-wider text-muted-foreground">Consumo</h2>
+			{#if entries.length > 0}
+				<span class="text-[10px] text-muted-foreground">consumo após o último dia pago fica pendente</span>
+			{/if}
+		</div>
 		{#if entries.length === 0}
 			<p class="mb-5 text-sm text-muted-foreground">Nenhum consumo</p>
 		{:else}
@@ -248,9 +280,27 @@
 				{#each entries as entry (entry.id)}
 					{@const product = entry.product_id ? products.getById(entry.product_id) : null}
 					{@const name = entry.custom_name ?? product?.name ?? '?'}
-					<div class="flex items-center justify-between px-4 py-3">
-						<div class="text-sm">{name} <span class="text-muted-foreground">x{entry.quantity}{#if entry.split_count > 1} ÷{entry.split_count}{/if}</span></div>
-						<span class="text-sm font-medium text-primary">{formatCurrency(entryValue(entry, getPrice))}</span>
+					{@const included = isEntryIncluded(entry)}
+					<div class="flex items-center justify-between gap-2 px-4 py-3 {included ? '' : 'opacity-40'}">
+						<button
+							type="button"
+							onclick={() => toggleEntry(entry)}
+							aria-pressed={included}
+							aria-label="{included ? 'Excluir' : 'Incluir'} {name} de {formatDate(entry.date)} do pagamento"
+							class="-my-1 flex flex-1 items-center gap-2 py-1 text-left text-sm"
+						>
+							<span
+								class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-all
+									{included ? 'border-primary bg-primary/20' : 'border-muted-foreground bg-transparent'}"
+							>
+								{#if included}
+									<span class="h-1.5 w-1.5 rounded-full bg-primary"></span>
+								{/if}
+							</span>
+							<span class="{included ? '' : 'line-through'}">{name} <span class="text-muted-foreground">x{entry.quantity}{#if entry.split_count > 1} ÷{entry.split_count}{/if}</span></span>
+							<span class="text-muted-foreground text-xs {included ? '' : 'line-through'}">{formatDate(entry.date)}</span>
+						</button>
+						<span class="text-sm font-medium text-primary {included ? '' : 'line-through'}">{formatCurrency(entryValue(entry, getPrice))}</span>
 					</div>
 				{/each}
 			</div>
