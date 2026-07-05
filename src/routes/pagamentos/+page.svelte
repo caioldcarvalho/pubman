@@ -12,6 +12,7 @@
 	import Check from '@lucide/svelte/icons/check';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Wallet from '@lucide/svelte/icons/wallet';
+	import History from '@lucide/svelte/icons/history';
 
 	// Selection state persists in localStorage; item marks only reset when a
 	// filter bubble (Fixos/Freelas/Ressarcimentos) is clicked.
@@ -191,6 +192,13 @@
 </script>
 
 <PageHeader title="Pagamentos">
+	<a
+		href="/pagamentos/historico"
+		aria-label="Histórico de pagamentos"
+		class="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors active:bg-card"
+	>
+		<History class="h-5 w-5" />
+	</a>
 	{#if allItems.length > 0}
 		<Button size="sm" onclick={share}>Compartilhar</Button>
 	{/if}
