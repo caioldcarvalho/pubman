@@ -11,6 +11,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Badge } from '$lib/components/ui/badge';
 	import Copy from '@lucide/svelte/icons/copy';
+	import LifeBuoy from '@lucide/svelte/icons/life-buoy';
 
 	const period = $derived(schedule.periods.find((p) => p.id === page.params.id));
 	const dates = $derived(period ? schedule.getDatesByPeriod(period.id) : []);
@@ -43,12 +44,30 @@
 		await schedule.setAvailability(dateId, collabId, !current);
 	}
 
-	async function toggleAssign(dateId: string, collabId: string) {
-		const wasAssigned = schedule.isAssigned(dateId, collabId);
-		await schedule.toggleAssignment(dateId, collabId);
+	// Toque no card: none→titular, titular→fora, backup→promove a titular.
+	async function tapMain(dateId: string, collabId: string) {
+		const state = schedule.getAssignmentState(dateId, collabId);
 		const name = collaborators.getById(collabId)?.name ?? '';
-		if (!wasAssigned) {
+		if (state === 'none') {
+			await schedule.setAssignment(dateId, collabId, 'titular');
 			toast.success(`${name} escalado`);
+		} else if (state === 'backup') {
+			await schedule.setAssignment(dateId, collabId, 'titular');
+			toast.success(`${name} promovido a titular`);
+		} else {
+			await schedule.setAssignment(dateId, collabId, 'none');
+		}
+	}
+
+	// Toque no selo backup: none→backup, titular→rebaixa a backup, backup→fora.
+	async function tapBackup(dateId: string, collabId: string) {
+		const state = schedule.getAssignmentState(dateId, collabId);
+		const name = collaborators.getById(collabId)?.name ?? '';
+		if (state === 'backup') {
+			await schedule.setAssignment(dateId, collabId, 'none');
+		} else {
+			await schedule.setAssignment(dateId, collabId, 'backup');
+			toast.info(`${name} de backup`);
 		}
 	}
 
@@ -80,10 +99,9 @@
 		let lastDate = '';
 
 		for (const d of dates) {
-			const assigned = schedule.getAssignments(d.id);
-			const names = assigned
-				.map((a) => collaborators.getById(a.collaborator_id)?.name)
-				.filter(Boolean);
+			const nameOf = (a: { collaborator_id: string }) => collaborators.getById(a.collaborator_id)?.name;
+			const names = schedule.getTitulares(d.id).map(nameOf).filter(Boolean);
+			const backupNames = schedule.getBackups(d.id).map(nameOf).filter(Boolean);
 
 			// Add blank line if there's a gap of more than 2 days from last date
 			if (lastDate) {
@@ -94,7 +112,9 @@
 			}
 
 			const dateStr = formatDate(d.date);
-			lines.push(names.length > 0 ? `${dateStr} - ${names.join(', ')}` : `${dateStr} - (vazio)`);
+			let line = names.length > 0 ? `${dateStr} - ${names.join(', ')}` : `${dateStr} - `;
+			if (backupNames.length > 0) line += ` (backup: ${backupNames.join(', ')})`;
+			lines.push(line);
 			lastDate = d.date;
 		}
 
@@ -294,8 +314,9 @@
 			<div class="stagger space-y-5">
 				{#each dates as schedDate (schedDate.id)}
 					{@const available = schedule.getAvailableCollaborators(schedDate.id)}
-					{@const assigned = schedule.getAssignments(schedDate.id)}
-					{@const isFull = assigned.length >= schedDate.required_count}
+					{@const titularCount = schedule.getTitulares(schedDate.id).length}
+					{@const backupCount = schedule.getBackups(schedDate.id).length}
+					{@const isFull = titularCount >= schedDate.required_count}
 					<div>
 						<div class="mb-2 flex items-center gap-2">
 							<span class="rounded-lg bg-muted px-2 py-1 text-xs font-bold {schedDate.day_of_week === 6 ? 'bg-primary/20 text-primary' : ''}">
@@ -303,8 +324,11 @@
 							</span>
 							<span class="text-sm font-semibold">{formatDate(schedDate.date)}</span>
 							<Badge class="font-bold {isFull ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}">
-								{assigned.length}/{schedDate.required_count}
+								{titularCount}/{schedDate.required_count}
 							</Badge>
+							{#if backupCount > 0}
+								<Badge class="font-bold bg-warning/15 text-warning">+{backupCount} backup</Badge>
+							{/if}
 						</div>
 						{#if available.filter((a) => areaFreelancers.some((c) => c.id === a.collaborator_id)).length === 0}
 							<p class="rounded-xl bg-card px-4 py-3 text-center text-xs text-muted-foreground">Ninguém disponível</p>
@@ -312,21 +336,41 @@
 							<div class="grid grid-cols-2 gap-1.5">
 								{#each areaFreelancers as collab (collab.id)}
 									{@const isAvail = available.some((a) => a.collaborator_id === collab.id)}
-									{@const isAssigned = schedule.isAssigned(schedDate.id, collab.id)}
+									{@const state = schedule.getAssignmentState(schedDate.id, collab.id)}
+									{@const isTitular = state === 'titular'}
+									{@const isBackup = state === 'backup'}
 									{@const dc = dayCounts.get(collab.id) ?? { fri: 0, sat: 0, other: 0 }}
 									{#if isAvail}
-										<button
-											onclick={() => toggleAssign(schedDate.id, collab.id)}
-											class="pressable flex flex-col items-start rounded-xl px-3 py-2 text-left transition-all
-												{isAssigned ? 'bg-primary text-primary-foreground shadow-md shadow-primary/30' : 'bg-card text-foreground ring-1 ring-border'}"
+										<div
+											class="pressable relative flex flex-col items-start rounded-xl transition-all
+												{isTitular ? 'bg-primary text-primary-foreground shadow-md shadow-primary/30' : ''}
+												{isBackup ? 'bg-warning/10 text-foreground border border-dashed border-warning/60' : ''}
+												{state === 'none' ? 'bg-card text-foreground ring-1 ring-border' : ''}"
 										>
-											<span class="text-sm font-medium">{collab.name}</span>
-											<div class="flex items-center gap-2 text-[10px] {isAssigned ? 'text-primary-foreground/70' : 'text-muted-foreground'}">
-												<span title="Estrelas">★{collab.stars}</span>
-												<span title="Sextas">sex·{dc.fri}</span>
-												<span class="{isAssigned ? '' : 'text-primary'}" title="Sábados">sáb·{dc.sat}</span>
-											</div>
-										</button>
+											<button
+												onclick={() => tapMain(schedDate.id, collab.id)}
+												class="flex w-full flex-col items-start px-3 py-2 pr-9 text-left"
+											>
+												<span class="text-sm font-medium">{collab.name}</span>
+												<div class="flex items-center gap-2 text-[10px] {isTitular ? 'text-primary-foreground/70' : 'text-muted-foreground'}">
+													{#if isBackup}<span class="font-bold uppercase text-warning">backup</span>{/if}
+													<span title="Estrelas">★{collab.stars}</span>
+													<span title="Sextas">sex·{dc.fri}</span>
+													<span class="{isTitular ? '' : 'text-primary'}" title="Sábados">sáb·{dc.sat}</span>
+												</div>
+											</button>
+											<button
+												onclick={() => tapBackup(schedDate.id, collab.id)}
+												title={isBackup ? 'Tirar de backup' : 'Deixar de backup (prontidão)'}
+												aria-label={isBackup ? 'Tirar de backup' : 'Deixar de backup'}
+												class="absolute right-1 top-1 rounded-lg p-1.5 leading-none transition-all
+													{isBackup ? 'bg-warning text-warning-foreground' : ''}
+													{isTitular ? 'text-primary-foreground/60 hover:text-primary-foreground' : ''}
+													{state === 'none' ? 'text-muted-foreground hover:text-warning' : ''}"
+											>
+												<LifeBuoy class="h-3.5 w-3.5" />
+											</button>
+										</div>
 									{/if}
 								{/each}
 							</div>

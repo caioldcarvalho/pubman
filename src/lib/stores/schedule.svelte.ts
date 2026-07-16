@@ -31,7 +31,11 @@ export interface Assignment {
 	check_in: string | null;
 	check_out: string | null;
 	payment_id: string | null;
+	is_backup: boolean;
 }
+
+/** Estado de escalação de um colaborador num dia. */
+export type AssignmentState = 'none' | 'titular' | 'backup';
 
 class ScheduleStore {
 	periods = $state<SchedulePeriod[]>([]);
@@ -125,6 +129,22 @@ class ScheduleStore {
 		return this._assignByDate.get(dateId) ?? [];
 	}
 
+	/** Titulares do dia (contam na cota e no pagamento). */
+	getTitulares(dateId: string): Assignment[] {
+		return (this._assignByDate.get(dateId) ?? []).filter((a) => !a.is_backup);
+	}
+
+	/** Backups/plantonistas do dia (prontidão; fora da cota e do pagamento). */
+	getBackups(dateId: string): Assignment[] {
+		return (this._assignByDate.get(dateId) ?? []).filter((a) => a.is_backup);
+	}
+
+	getAssignmentState(dateId: string, collaboratorId: string): AssignmentState {
+		const a = this._assignByDate.get(dateId)?.find((a) => a.collaborator_id === collaboratorId);
+		if (!a) return 'none';
+		return a.is_backup ? 'backup' : 'titular';
+	}
+
 	getDateById(dateId: string): ScheduleDate | undefined {
 		return this._dateById.get(dateId);
 	}
@@ -133,6 +153,7 @@ class ScheduleStore {
 		const periodDateIds = new Set(this.dates.filter((d) => d.period_id === periodId).map((d) => d.id));
 		const counts = new Map<string, number>();
 		for (const a of this.assignments) {
+			if (a.is_backup) continue; // backup não é convocação
 			if (periodDateIds.has(a.date_id)) {
 				counts.set(a.collaborator_id, (counts.get(a.collaborator_id) ?? 0) + 1);
 			}
@@ -145,6 +166,7 @@ class ScheduleStore {
 		const dateMap = new Map(periodDates.map((d) => [d.id, d]));
 		const counts = new Map<string, { fri: number; sat: number; other: number }>();
 		for (const a of this.assignments) {
+			if (a.is_backup) continue; // backup não conta como dia trabalhado
 			const sd = dateMap.get(a.date_id);
 			if (!sd) continue;
 			const c = counts.get(a.collaborator_id) ?? { fri: 0, sat: 0, other: 0 };
@@ -184,6 +206,37 @@ class ScheduleStore {
 			const { data } = await supabase
 				.from('assignments')
 				.insert({ date_id: dateId, collaborator_id: collaboratorId })
+				.select()
+				.single();
+			if (data) this.assignments.push(data);
+		}
+	}
+
+	/**
+	 * Leva um colaborador para o estado desejado num dia (titular, backup ou fora).
+	 * Centraliza todas as transições: criar, promover backup→titular, rebaixar
+	 * titular→backup e remover.
+	 */
+	async setAssignment(dateId: string, collaboratorId: string, target: AssignmentState) {
+		const existing = this.assignments.find(
+			(a) => a.date_id === dateId && a.collaborator_id === collaboratorId,
+		);
+		if (target === 'none') {
+			if (existing) {
+				await supabase.from('assignments').delete().eq('id', existing.id);
+				this.assignments.splice(this.assignments.indexOf(existing), 1);
+			}
+			return;
+		}
+		const isBackup = target === 'backup';
+		if (existing) {
+			if (existing.is_backup === isBackup) return;
+			await supabase.from('assignments').update({ is_backup: isBackup }).eq('id', existing.id);
+			existing.is_backup = isBackup;
+		} else {
+			const { data } = await supabase
+				.from('assignments')
+				.insert({ date_id: dateId, collaborator_id: collaboratorId, is_backup: isBackup })
 				.select()
 				.single();
 			if (data) this.assignments.push(data);
@@ -244,6 +297,7 @@ class ScheduleStore {
 		return this.assignments.filter((a) => {
 			if (a.collaborator_id !== collaboratorId) return false;
 			if (a.payment_id) return false;
+			if (a.is_backup) return false; // backup não chamado não é pago
 			const schedDate = this._dateById.get(a.date_id);
 			return schedDate && schedDate.date <= today;
 		});
@@ -388,6 +442,7 @@ class ScheduleStore {
 			.filter((a) => {
 				if (a.collaborator_id !== collaboratorId) return false;
 				if (a.payment_id) return false;
+				if (a.is_backup) return false; // backup não chamado não é pago
 				const sd = this._dateById.get(a.date_id);
 				return sd && sd.date <= today;
 			})

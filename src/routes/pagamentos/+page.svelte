@@ -70,7 +70,7 @@
 
 		const result: { date: typeof pastDates[0]; assigned: { name: string; id: string }[] }[] = [];
 		for (const sd of pastDates) {
-			const assignments = schedule.getAssignments(sd.id);
+			const assignments = schedule.getTitulares(sd.id);
 			if (assignments.length === 0) continue;
 			const assigned = assignments.map((a) => {
 				const c = collaborators.getById(a.collaborator_id);
