@@ -80,9 +80,13 @@
 
 	async function saveEdit() {
 		if (!period || !editStart || !editEnd) return;
-		await schedule.updatePeriod(period.id, editStart, editEnd);
-		toast.success('Escala atualizada');
-		editing = false;
+		try {
+			await schedule.updatePeriod(period.id, editStart, editEnd);
+			toast.success('Escala atualizada');
+			editing = false;
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Erro ao atualizar escala');
+		}
 	}
 
 	async function deletePeriod() {

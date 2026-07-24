@@ -117,6 +117,18 @@ class ScheduleStore {
 		return this._datesByPeriod.get(periodId) ?? [];
 	}
 
+	/**
+	 * Retorna o primeiro período existente cujo intervalo se sobrepõe a
+	 * [startDate, endDate], ignorando `excludePeriodId` (usado na edição).
+	 * Datas são strings ISO 'YYYY-MM-DD', então a comparação lexical basta.
+	 * Sobreposição: s1 <= e2 && s2 <= e1.
+	 */
+	findOverlappingPeriod(startDate: string, endDate: string, excludePeriodId?: string): SchedulePeriod | undefined {
+		return this.periods.find(
+			(p) => p.id !== excludePeriodId && p.start_date <= endDate && startDate <= p.end_date,
+		);
+	}
+
 	getAvailability(dateId: string): Availability[] {
 		return this._availByDate.get(dateId) ?? [];
 	}
@@ -244,6 +256,12 @@ class ScheduleStore {
 	}
 
 	async addPeriod(startDate: string, endDate: string, extraDates: string[] = []): Promise<string> {
+		const clash = this.findOverlappingPeriod(startDate, endDate);
+		if (clash) {
+			throw new Error(
+				`Período sobrepõe uma escala existente (${clash.start_date} a ${clash.end_date}). Edite a escala existente em vez de criar outra.`,
+			);
+		}
 		const { data: period } = await supabase
 			.from('schedule_periods')
 			.insert({ start_date: startDate, end_date: endDate })
@@ -317,6 +335,12 @@ class ScheduleStore {
 	}
 
 	async updatePeriod(periodId: string, startDate: string, endDate: string, extraDates: string[] = []) {
+		const clash = this.findOverlappingPeriod(startDate, endDate, periodId);
+		if (clash) {
+			throw new Error(
+				`Período sobrepõe outra escala (${clash.start_date} a ${clash.end_date}). Ajuste as datas para não se sobreporem.`,
+			);
+		}
 		await supabase.from('schedule_periods').update({ start_date: startDate, end_date: endDate }).eq('id', periodId);
 
 		// Delete old dates (cascade clears availability/assignments in DB)

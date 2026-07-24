@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { schedule } from '$lib/stores/schedule.svelte';
+	import { toast } from '$lib/stores/toast.svelte';
 	import { formatDate, getDayName } from '$lib/utils';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -24,10 +25,19 @@
 		extraDates = extraDates.filter((e) => e !== d);
 	}
 
+	let saving = $state(false);
+
 	async function create() {
-		if (!startDate || !endDate) return;
-		const id = await schedule.addPeriod(startDate, endDate, extraDates);
-		goto(`/escala/${id}`);
+		if (!startDate || !endDate || saving) return;
+		saving = true;
+		try {
+			const id = await schedule.addPeriod(startDate, endDate, extraDates);
+			goto(`/escala/${id}`);
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Erro ao criar escala');
+		} finally {
+			saving = false;
+		}
 	}
 </script>
 
@@ -74,7 +84,7 @@
 		</div>
 	{/if}
 
-	<Button class="w-full" size="lg" onclick={create} disabled={!startDate || !endDate}>
-		Criar Escala
+	<Button class="w-full" size="lg" onclick={create} disabled={!startDate || !endDate || saving}>
+		{saving ? 'Criando…' : 'Criar Escala'}
 	</Button>
 </div>
