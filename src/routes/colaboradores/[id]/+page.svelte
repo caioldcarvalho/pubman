@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import StarRating from '$lib/components/StarRating.svelte';
 	import { collaborators, ALL_ROLES, type Role } from '$lib/stores/collaborators.svelte';
@@ -19,6 +20,7 @@
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import X from '@lucide/svelte/icons/x';
 	import Check from '@lucide/svelte/icons/check';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
 
 	const collab = $derived(collaborators.getById(page.params.id!));
 	const entries = $derived(collab ? consumption.getByCollaborator(collab.id) : []);
@@ -280,6 +282,20 @@
 		await collaborators.update(collab.id, { roles: newRoles });
 		toast.success(`Funções atualizadas`);
 	}
+
+	let showDeleteConfirm = $state(false);
+
+	async function deleteFreela() {
+		if (!collab) return;
+		try {
+			await collaborators.remove(collab.id);
+			toast.success(`${collab.name} excluído`);
+			goto('/colaboradores');
+		} catch (e: any) {
+			toast.error(e.message ?? 'Erro ao excluir');
+			showDeleteConfirm = false;
+		}
+	}
 </script>
 
 {#if collab}
@@ -390,6 +406,31 @@
 					</div>
 				{/if}
 			</div>
+
+			{#if !collab.fixed}
+				<div class="mt-4 border-t border-border pt-4">
+					{#if showDeleteConfirm}
+						<div class="rounded-xl bg-destructive/10 p-3 space-y-2">
+							<p class="text-xs font-medium text-destructive">
+								Excluir {collab.name}? Isso apaga o histórico de escalas/consumo dele(a) já pagas
+								(os valores continuam no Resumo de Pagamentos). Não pode ser desfeito.
+							</p>
+							<div class="flex gap-2">
+								<Button variant="destructive" size="sm" class="flex-1" onclick={deleteFreela}>Confirmar exclusão</Button>
+								<Button variant="secondary" size="sm" onclick={() => (showDeleteConfirm = false)}>Cancelar</Button>
+							</div>
+						</div>
+					{:else}
+						<button
+							onclick={() => (showDeleteConfirm = true)}
+							class="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+						>
+							<Trash2 class="h-3.5 w-3.5" />
+							Excluir Freela
+						</button>
+					{/if}
+				</div>
+			{/if}
 		</div>
 
 		<!-- Calendar dashboard -->

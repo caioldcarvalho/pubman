@@ -11,6 +11,7 @@
 	import UtensilsCrossed from '@lucide/svelte/icons/utensils-crossed';
 	import ShoppingBag from '@lucide/svelte/icons/shopping-bag';
 	import ChartColumn from '@lucide/svelte/icons/chart-column';
+	import Settings from '@lucide/svelte/icons/settings';
 
 	const tabs = [
 		{ href: '/hoje', label: 'Noite', icon: Clock },
@@ -26,6 +27,7 @@
 		{ href: '/cardapio', label: 'Cardápio', icon: UtensilsCrossed },
 		{ href: '/compras', label: 'Compras', icon: ShoppingBag },
 		{ href: '/resumo', label: 'Resumo', icon: ChartColumn },
+		{ href: '/configuracoes', label: 'Configurações', icon: Settings },
 	] as const;
 
 	const morePaths = moreLinks.map((l) => l.href);

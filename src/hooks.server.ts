@@ -9,7 +9,7 @@ const CSP =
 	"style-src 'self' 'unsafe-inline'; " +
 	"img-src 'self' data:; " +
 	"font-src 'self' data:; " +
-	"connect-src 'self' https://mptkexwsojbtdfcsbzqv.supabase.co wss://mptkexwsojbtdfcsbzqv.supabase.co; " +
+	"connect-src 'self' https://xbzecaklyzcxinbhyncp.supabase.co wss://xbzecaklyzcxinbhyncp.supabase.co; " +
 	"object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
 
 export const handle: Handle = async ({ event, resolve }) => {
