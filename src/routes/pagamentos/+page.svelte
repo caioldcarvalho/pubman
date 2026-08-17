@@ -7,6 +7,7 @@
 	import { products } from '$lib/stores/products.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatCurrency, formatDate, getDayName, todayISO } from '$lib/utils';
+	import { getEffectiveRate } from '$lib/shift';
 	import { browser } from '$app/environment';
 	import { Button } from '$lib/components/ui/button';
 	import Check from '@lucide/svelte/icons/check';
@@ -104,7 +105,10 @@
 					.getPastAssignments(collab.id, todayISO())
 					.filter((a) => !excludedNights.has(a.date_id));
 				const daysWorked = assignments.length;
-				const earned = assignments.reduce((sum, a) => sum + (a.rate_override ?? collab.base_rate), 0);
+				const earned = assignments.reduce((sum, a) => {
+					const dayOfWeek = schedule.getDateById(a.date_id)?.day_of_week;
+					return sum + getEffectiveRate(a.rate_override ?? collab.base_rate, dayOfWeek, a.check_in, a.check_out);
+				}, 0);
 				const consumed = consumption.totalByCollaborator(collab.id, (pid) => products.getPrice(pid));
 				const reimbTotal = purchases.totalPendingByCollaborator(collab.id);
 				return {

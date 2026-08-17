@@ -10,6 +10,7 @@
 	import { payments } from '$lib/stores/payments.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatCurrency, formatDate, getDayName, todayISO } from '$lib/utils';
+	import { getEffectiveRate } from '$lib/shift';
 	import { buildPixBRCode, normalizePixKey } from '$lib/pix';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -71,8 +72,15 @@
 		collab ? purchases.pendingByCollaborator(collab.id) : []
 	);
 
+	// Valor cheio de cada dia (rate_override ou base_rate) descontado proporcionalmente
+	// por atraso/saída antecipada, com base no turno esperado pro dia da semana (ver $lib/shift).
 	const totalEarned = $derived(
-		collab ? selectedAssignments.reduce((sum, a) => sum + (a.rate_override ?? collab.base_rate), 0) : 0
+		collab
+			? selectedAssignments.reduce((sum, a) => {
+					const dayOfWeek = schedule.getDateById(a.date_id)?.day_of_week;
+					return sum + getEffectiveRate(a.rate_override ?? collab.base_rate, dayOfWeek, a.check_in, a.check_out);
+				}, 0)
+			: 0
 	);
 
 	const getPrice = (id: string) => products.getById(id)?.price ?? 0;
@@ -236,6 +244,8 @@
 				{#each assignments as assignment (assignment.id)}
 					{@const dateStr = getDateForAssignment(assignment)}
 					{@const included = !deselectedDays.has(assignment.id)}
+					{@const fullRate = assignment.rate_override ?? collab.base_rate}
+					{@const effectiveRate = getEffectiveRate(fullRate, schedule.getDateById(assignment.date_id)?.day_of_week, assignment.check_in, assignment.check_out)}
 					<div class="flex items-center justify-between gap-2 px-4 py-3 {included ? '' : 'opacity-40'}">
 						<button
 							type="button"
@@ -254,10 +264,13 @@
 							</span>
 							<span class="{included ? 'font-medium' : 'font-medium line-through'}">{getDayName(dateStr)}</span>
 							<span class="text-muted-foreground {included ? '' : 'line-through'}">{formatDate(dateStr)}</span>
+							{#if effectiveRate !== fullRate}
+								<span class="block text-[11px] text-warning">desconto por ponto: {formatCurrency(effectiveRate)}</span>
+							{/if}
 						</button>
 						<Input
 							type="number"
-							value={assignment.rate_override ?? collab.base_rate}
+							value={fullRate}
 							onchange={(e) => setRateOverride(assignment.id, e.currentTarget.value)}
 							class="w-24 text-right font-medium"
 						/>

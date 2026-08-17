@@ -12,6 +12,11 @@ export const ALL_ROLES: { value: Role; label: string }[] = [
 
 const SALAO_ROLES: Role[] = ['instrutor', 'garcom'];
 
+/** Sugestão de valor/dia por função: instrutor/garçom/bar = 80, cozinha = 100. */
+export function suggestedBaseRate(roles: Role[]): number {
+	return roles.includes('cozinha') ? 100 : 80;
+}
+
 export interface Collaborator {
 	id: string;
 	name: string;
