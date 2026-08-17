@@ -8,6 +8,7 @@
 	import { events } from '$lib/stores/events.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatCurrency, formatDate, getDayName, todayISO } from '$lib/utils';
+	import { getHoursWorked, getEffectiveRate as getEffectiveRateForDay } from '$lib/shift';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import Calendar from '@lucide/svelte/icons/calendar';
@@ -128,23 +129,12 @@
 		toast.info(`${name} removido`);
 	}
 
-	// Standard shift duration (hours) - used for proportional pay
-	const FULL_SHIFT_HOURS = 6;
-
-	function getHoursWorked(checkIn: string | null, checkOut: string | null): number | null {
-		if (!checkIn || !checkOut) return null;
-		const [h1, m1] = checkIn.split(':').map(Number);
-		const [h2, m2] = checkOut.split(':').map(Number);
-		let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
-		if (diff < 0) diff += 24 * 60; // crossed midnight
-		return diff / 60;
-	}
-
-	function getEffectiveRate(assignment: { rate_override: number | null; check_in: string | null; check_out: string | null }, baseRate: number): number {
+	// Desconta proporcionalmente por atraso/saída antecipada, com base no turno
+	// esperado pro dia da semana daquela escala (ver $lib/shift).
+	function getEffectiveRate(assignment: { date_id: string; rate_override: number | null; check_in: string | null; check_out: string | null }, baseRate: number): number {
 		const rate = assignment.rate_override ?? baseRate;
-		const hours = getHoursWorked(assignment.check_in, assignment.check_out);
-		if (hours === null) return rate;
-		return rate * (hours / FULL_SHIFT_HOURS);
+		const dayOfWeek = schedule.getDateById(assignment.date_id)?.day_of_week;
+		return getEffectiveRateForDay(rate, dayOfWeek, assignment.check_in, assignment.check_out);
 	}
 
 	async function setTime(assignmentId: string, field: 'check_in' | 'check_out', value: string) {

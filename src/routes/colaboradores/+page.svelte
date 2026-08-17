@@ -1,7 +1,7 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import StarRating from '$lib/components/StarRating.svelte';
-	import { collaborators, ALL_ROLES, type Role } from '$lib/stores/collaborators.svelte';
+	import { collaborators, ALL_ROLES, suggestedBaseRate, type Role } from '$lib/stores/collaborators.svelte';
 	import { consumption } from '$lib/stores/consumption.svelte';
 	import { products } from '$lib/stores/products.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
@@ -17,6 +17,8 @@
 	let newRoles = $state<Role[]>([]);
 	let newRate = $state(80);
 	let newFixed = $state(false);
+	// Enquanto o usuário não mexer no valor manualmente, ele segue a sugestão por função.
+	let rateTouched = $state(false);
 
 	function toggleRole(role: Role) {
 		if (newRoles.includes(role)) {
@@ -24,6 +26,11 @@
 		} else {
 			newRoles = [...newRoles, role];
 		}
+		if (!rateTouched) newRate = suggestedBaseRate(newRoles);
+	}
+
+	function onRateInput() {
+		rateTouched = true;
 	}
 
 	async function addCollaborator() {
@@ -37,6 +44,8 @@
 		toast.success(`${newName.trim()} adicionado`);
 		newName = '';
 		newRoles = [];
+		newRate = 80;
+		rateTouched = false;
 		showAdd = false;
 	}
 </script>
@@ -65,7 +74,7 @@
 		<div class="mb-3 flex items-center gap-4">
 			<div class="flex items-center gap-2">
 				<Label for="new-rate" class="text-sm text-muted-foreground">Valor/dia:</Label>
-				<Input id="new-rate" bind:value={newRate} type="number" min="0" class="w-24" />
+				<Input id="new-rate" bind:value={newRate} oninput={onRateInput} type="number" min="0" class="w-24" />
 			</div>
 			<button
 				type="button"

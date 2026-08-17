@@ -12,6 +12,7 @@
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatCurrency, formatDate, formatDateFull, getDayName, todayISO } from '$lib/utils';
 	import { formatPixKeyByType, inferPixKeyType, PIX_KEY_TYPES, type PixKeyType } from '$lib/pix';
+	import { getHoursWorked, getEffectiveRate as getEffectiveRateForDay } from '$lib/shift';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
@@ -87,34 +88,24 @@
 	}
 
 	// Calendar: all assignments for this collaborator
-	const FULL_SHIFT_HOURS = 6;
 	const allAssignments = $derived(
 		collab
 			? schedule.assignments
 					.filter((a) => a.collaborator_id === collab.id)
 					.map((a) => {
 						const sd = schedule.getDateById(a.date_id);
-						return { ...a, date: sd?.date ?? '' };
+						return { ...a, date: sd?.date ?? '', dayOfWeek: sd?.day_of_week };
 					})
 					.filter((a) => a.date)
 					.sort((a, b) => b.date.localeCompare(a.date))
 			: []
 	);
 
-	function getHoursWorked(checkIn: string | null, checkOut: string | null): number | null {
-		if (!checkIn || !checkOut) return null;
-		const [h1, m1] = checkIn.split(':').map(Number);
-		const [h2, m2] = checkOut.split(':').map(Number);
-		let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
-		if (diff < 0) diff += 24 * 60;
-		return diff / 60;
-	}
-
-	function getEffectiveRate(a: { rate_override: number | null; check_in: string | null; check_out: string | null }, baseRate: number): number {
+	// Desconta proporcionalmente por atraso/saída antecipada, com base no turno
+	// esperado pro dia da semana daquela escala (ver $lib/shift).
+	function getEffectiveRate(a: { dayOfWeek?: number; rate_override: number | null; check_in: string | null; check_out: string | null }, baseRate: number): number {
 		const rate = a.rate_override ?? baseRate;
-		const hours = getHoursWorked(a.check_in, a.check_out);
-		if (hours === null) return rate;
-		return rate * (hours / FULL_SHIFT_HOURS);
+		return getEffectiveRateForDay(rate, a.dayOfWeek, a.check_in, a.check_out);
 	}
 
 	// Calendar month navigation
@@ -691,7 +682,7 @@
 												{@const sd = schedule.getDateById(a.date_id)}
 												<div class="flex justify-between py-0.5">
 													<span>{sd ? `${getDayName(sd.date)} ${formatDate(sd.date)}` : 'dia removido'}</span>
-													<span class="font-medium">{formatCurrency(a.rate_override ?? collab.base_rate)}</span>
+													<span class="font-medium">{formatCurrency(getEffectiveRateForDay(a.rate_override ?? collab.base_rate, sd?.day_of_week, a.check_in, a.check_out))}</span>
 												</div>
 											{/each}
 										</div>

@@ -7,6 +7,7 @@
 	import { schedule } from '$lib/stores/schedule.svelte';
 	import { products } from '$lib/stores/products.svelte';
 	import { formatCurrency, formatDate, formatDateFull, getDayName, todayISO } from '$lib/utils';
+	import { getEffectiveRate } from '$lib/shift';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Wallet from '@lucide/svelte/icons/wallet';
 
@@ -248,7 +249,7 @@
 										{@const collab = pmt.collaborator_id ? collaborators.getById(pmt.collaborator_id) : null}
 										<div class="flex justify-between py-0.5">
 											<span>{sd ? `${getDayName(sd.date)} ${formatDate(sd.date)}` : 'dia removido'}</span>
-											<span class="font-medium">{formatCurrency(a.rate_override ?? collab?.base_rate ?? 0)}</span>
+											<span class="font-medium">{formatCurrency(getEffectiveRate(a.rate_override ?? collab?.base_rate ?? 0, sd?.day_of_week, a.check_in, a.check_out))}</span>
 										</div>
 									{/each}
 								</div>

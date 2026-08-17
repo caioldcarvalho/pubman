@@ -7,11 +7,15 @@
 	import { purchases } from '$lib/stores/purchases.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { formatCurrency } from '$lib/utils';
+	import { getEffectiveRate } from '$lib/shift';
 
 	const payroll = $derived(
 		collaborators.active.map((collab) => {
 			const assignments = schedule.assignments.filter((a) => a.collaborator_id === collab.id && !a.payment_id);
-			const earned = assignments.reduce((sum, a) => sum + (a.rate_override ?? collab.base_rate), 0);
+			const earned = assignments.reduce((sum, a) => {
+				const dayOfWeek = schedule.getDateById(a.date_id)?.day_of_week;
+				return sum + getEffectiveRate(a.rate_override ?? collab.base_rate, dayOfWeek, a.check_in, a.check_out);
+			}, 0);
 			const consumed = consumption.totalByCollaborator(collab.id, (pid) => products.getPrice(pid));
 			return { collab, earned, consumed, net: earned - consumed };
 		}).filter((r) => r.net !== 0)
