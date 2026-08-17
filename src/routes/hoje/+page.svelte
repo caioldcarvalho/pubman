@@ -7,7 +7,7 @@
 	import { products } from '$lib/stores/products.svelte';
 	import { events } from '$lib/stores/events.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
-	import { formatCurrency, formatDate, getDayName, todayISO } from '$lib/utils';
+	import { formatCurrency, formatDate, getDayName, operatingDateISO } from '$lib/utils';
 	import { getHoursWorked, getEffectiveRate as getEffectiveRateForDay } from '$lib/shift';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
@@ -16,7 +16,10 @@
 	import X from '@lucide/svelte/icons/x';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 
-	const todayStr = todayISO();
+	// Dia operacional, não calendário: de madrugada (até 6h) ainda considera o
+	// turno da véspera em aberto, pra sexta/sábado (que fecham 01h) não sumirem
+	// da tela antes de bater o ponto de saída.
+	const todayStr = operatingDateISO();
 
 	// A semana do pub vai de TERÇA a DOMINGO (segunda é folga). Dado hoje,
 	// devolve as 6 datas ISO da semana corrente (na segunda mostramos a semana
