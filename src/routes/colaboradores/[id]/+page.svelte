@@ -285,7 +285,7 @@
 
 	let showDeleteConfirm = $state(false);
 
-	async function deleteFreela() {
+	async function deleteCollaborator() {
 		if (!collab) return;
 		try {
 			await collaborators.remove(collab.id);
@@ -407,30 +407,31 @@
 				{/if}
 			</div>
 
-			{#if !collab.fixed}
-				<div class="mt-4 border-t border-border pt-4">
-					{#if showDeleteConfirm}
-						<div class="rounded-xl bg-destructive/10 p-3 space-y-2">
-							<p class="text-xs font-medium text-destructive">
-								Excluir {collab.name}? Isso apaga o histórico de escalas/consumo dele(a) já pagas
-								(os valores continuam no Resumo de Pagamentos). Não pode ser desfeito.
-							</p>
-							<div class="flex gap-2">
-								<Button variant="destructive" size="sm" class="flex-1" onclick={deleteFreela}>Confirmar exclusão</Button>
-								<Button variant="secondary" size="sm" onclick={() => (showDeleteConfirm = false)}>Cancelar</Button>
-							</div>
+			<div class="mt-4 border-t border-border pt-4">
+				{#if showDeleteConfirm}
+					<div class="rounded-xl bg-destructive/10 p-3 space-y-2">
+						<p class="text-xs font-medium text-destructive">
+							Excluir {collab.name}? Isso apaga o histórico de escalas/consumo dele(a) já pagas
+							(os valores continuam no Resumo de Pagamentos). Não pode ser desfeito.
+							{#if collab.fixed}
+								{' '}Ele(a) é colaborador fixo — todas as escalas futuras dele(a) também serão perdidas.
+							{/if}
+						</p>
+						<div class="flex gap-2">
+							<Button variant="destructive" size="sm" class="flex-1" onclick={deleteCollaborator}>Confirmar exclusão</Button>
+							<Button variant="secondary" size="sm" onclick={() => (showDeleteConfirm = false)}>Cancelar</Button>
 						</div>
-					{:else}
-						<button
-							onclick={() => (showDeleteConfirm = true)}
-							class="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
-						>
-							<Trash2 class="h-3.5 w-3.5" />
-							Excluir Freela
-						</button>
-					{/if}
-				</div>
-			{/if}
+					</div>
+				{:else}
+					<button
+						onclick={() => (showDeleteConfirm = true)}
+						class="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+					>
+						<Trash2 class="h-3.5 w-3.5" />
+						Excluir Colaborador
+					</button>
+				{/if}
+			</div>
 		</div>
 
 		<!-- Calendar dashboard -->

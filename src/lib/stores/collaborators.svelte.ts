@@ -83,15 +83,14 @@ class CollaboratorStore {
 	}
 
 	/**
-	 * Exclui um freelancer. Restrito a `fixed === false` e bloqueado se houver
-	 * escalas não liquidadas (`payment_id` nulo) — `assignments`/`consumption`/`availability`
+	 * Exclui um colaborador (fixo ou freela). Bloqueado se houver escalas não
+	 * liquidadas (`payment_id` nulo) — `assignments`/`consumption`/`availability`
 	 * têm ON DELETE CASCADE em collaborators, então excluir com dias não pagos faria
 	 * a dívida sumir sem rastro.
 	 */
 	async remove(id: string) {
 		const collab = this.getById(id);
 		if (!collab) return;
-		if (collab.fixed) throw new Error('Colaborador fixo não pode ser excluído. Torne-o freela primeiro.');
 
 		const hasUnsettledDays = schedule.assignments.some(
 			(a) => a.collaborator_id === id && !a.payment_id,
