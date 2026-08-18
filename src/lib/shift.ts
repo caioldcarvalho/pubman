@@ -72,3 +72,32 @@ export function getEffectiveRate(
 	const fraction = Math.min(1, overlapMinutes / shiftMinutes);
 	return rate * fraction;
 }
+
+/**
+ * Minutos "perdidos" do turno: atraso na entrada + antecipação na saída,
+ * comparado à janela esperada pro dia da semana. Não mexe em valor/pagamento —
+ * serve só pra acompanhamento de assiduidade (ex: colaborador fixo).
+ * Sem ponto batido ou sem turno definido pro dia, retorna 0.
+ */
+export function getShortfallMinutes(
+	dayOfWeek: number | null | undefined,
+	checkIn: string | null,
+	checkOut: string | null,
+): number {
+	if (!checkIn || !checkOut) return 0;
+
+	const shift = getShiftWindow(dayOfWeek);
+	if (!shift) return 0;
+
+	const shiftStart = toMinutes(shift.start);
+	let shiftEnd = toMinutes(shift.end);
+	if (shiftEnd <= shiftStart) shiftEnd += 24 * 60;
+
+	let inMin = toMinutes(checkIn);
+	let outMin = toMinutes(checkOut);
+	if (outMin <= inMin) outMin += 24 * 60;
+
+	const lateMinutes = Math.max(0, inMin - shiftStart);
+	const earlyMinutes = Math.max(0, shiftEnd - outMin);
+	return lateMinutes + earlyMinutes;
+}
