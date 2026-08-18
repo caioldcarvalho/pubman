@@ -7,6 +7,7 @@
 	import { payments } from '$lib/stores/payments.svelte';
 	import { events } from '$lib/stores/events.svelte';
 	import { tasks } from '$lib/stores/tasks.svelte';
+	import { fixedAttendance } from '$lib/stores/fixedAttendance.svelte';
 	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
@@ -14,7 +15,7 @@
 	let { children }: { children: Snippet } = $props();
 
 	const allLoaded = $derived(
-		collaborators.loaded && products.loaded && consumption.loaded && purchases.loaded && schedule.loaded && payments.loaded && events.loaded && tasks.loaded
+		collaborators.loaded && products.loaded && consumption.loaded && purchases.loaded && schedule.loaded && payments.loaded && events.loaded && tasks.loaded && fixedAttendance.loaded
 	);
 
 	// Load once on mount, not on every reactive update
@@ -27,6 +28,7 @@
 		if (!payments.loaded) payments.load();
 		if (!events.loaded) events.load();
 		if (!tasks.loaded) tasks.load();
+		if (!fixedAttendance.loaded) fixedAttendance.load();
 	});
 </script>
 

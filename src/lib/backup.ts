@@ -63,6 +63,7 @@ const TABLES_EXPORT_ORDER = [
 	'purchases',
 	'events',
 	'tasks',
+	'fixed_attendance',
 ];
 
 const TABLES_DELETE_ORDER = [...TABLES_EXPORT_ORDER].reverse();

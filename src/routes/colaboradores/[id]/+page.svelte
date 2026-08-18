@@ -10,9 +10,10 @@
 	import { products } from '$lib/stores/products.svelte';
 	import { payments } from '$lib/stores/payments.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
+	import { fixedAttendance } from '$lib/stores/fixedAttendance.svelte';
 	import { formatCurrency, formatDate, formatDateFull, getDayName, todayISO } from '$lib/utils';
 	import { formatPixKeyByType, inferPixKeyType, PIX_KEY_TYPES, type PixKeyType } from '$lib/pix';
-	import { getHoursWorked, getEffectiveRate as getEffectiveRateForDay } from '$lib/shift';
+	import { getHoursWorked, getEffectiveRate as getEffectiveRateForDay, getShortfallMinutes } from '$lib/shift';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
@@ -274,6 +275,43 @@
 		toast.success(`Funções atualizadas`);
 	}
 
+	// Assiduidade (só fixos): ponto separado de pagamento — ver $lib/stores/fixedAttendance.
+	// Pagamento de fixo é valor combinado à parte; isso é só acompanhamento de atraso.
+	const currentYearMonth = todayISO().slice(0, 7);
+	const monthAttendance = $derived(
+		collab ? fixedAttendance.getByCollaboratorMonth(collab.id, currentYearMonth) : []
+	);
+	const monthShortfallMinutes = $derived(
+		monthAttendance.reduce((sum, a) => {
+			const dow = new Date(a.date + 'T12:00:00').getDay();
+			return sum + getShortfallMinutes(dow, a.check_in, a.check_out);
+		}, 0)
+	);
+
+	function formatMinutes(min: number): string {
+		if (min < 60) return `${min}min`;
+		const h = Math.floor(min / 60);
+		const m = min % 60;
+		return m === 0 ? `${h}h` : `${h}h${m}min`;
+	}
+
+	let editingAttendance = $state<string | null>(null);
+	let editAttendIn = $state('');
+	let editAttendOut = $state('');
+
+	function startEditAttendance(a: { date: string; check_in: string | null; check_out: string | null }) {
+		editingAttendance = a.date;
+		editAttendIn = a.check_in ?? '';
+		editAttendOut = a.check_out ?? '';
+	}
+
+	async function saveAttendance() {
+		if (!collab || !editingAttendance) return;
+		await fixedAttendance.setTimes(collab.id, editingAttendance, editAttendIn || null, editAttendOut || null);
+		toast.success('Ponto atualizado');
+		editingAttendance = null;
+	}
+
 	let showDeleteConfirm = $state(false);
 
 	async function deleteCollaborator() {
@@ -424,6 +462,58 @@
 				{/if}
 			</div>
 		</div>
+
+		{#if collab.fixed}
+			<!-- Assiduidade: ponto de acompanhamento, não afeta pagamento (valor fixo à parte) -->
+			<div class="mb-5">
+				<div class="mb-3 flex items-center justify-between">
+					<h2 class="font-semibold">Assiduidade</h2>
+					<span class="rounded-lg px-2.5 py-1 text-sm font-semibold {monthShortfallMinutes > 0 ? 'bg-warning/15 text-warning' : 'bg-success/15 text-success'}">
+						{monthShortfallMinutes > 0 ? `${formatMinutes(monthShortfallMinutes)} de atraso no mês` : 'Sem atrasos no mês'}
+					</span>
+				</div>
+				<p class="mb-3 text-xs text-muted-foreground">Ponto só pra acompanhamento — não afeta o pagamento, que é valor fixo combinado à parte.</p>
+
+				{#if monthAttendance.length === 0}
+					<p class="py-4 text-center text-sm text-muted-foreground">Nenhum ponto registrado este mês</p>
+				{:else}
+					<div class="stagger divide-y divide-border rounded-2xl bg-card shadow-md shadow-black/10">
+						{#each monthAttendance as a (a.id)}
+							{@const dow = new Date(a.date + 'T12:00:00').getDay()}
+							{@const shortfall = getShortfallMinutes(dow, a.check_in, a.check_out)}
+							{#if editingAttendance === a.date}
+								<div class="px-4 py-3 space-y-2">
+									<div class="flex items-center justify-between">
+										<span class="text-sm font-medium">{getDayName(a.date)} {formatDate(a.date)}</span>
+										<button onclick={() => (editingAttendance = null)} class="text-xs text-muted-foreground">Cancelar</button>
+									</div>
+									<div class="flex items-center gap-2">
+										<Label for="edit-attend-in" class="text-[10px] text-muted-foreground">Entrada</Label>
+										<input id="edit-attend-in" type="time" bind:value={editAttendIn} class="rounded-lg bg-muted px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-info/50" />
+										<Label for="edit-attend-out" class="text-[10px] text-muted-foreground">Saída</Label>
+										<input id="edit-attend-out" type="time" bind:value={editAttendOut} class="rounded-lg bg-muted px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-info/50" />
+									</div>
+									<Button size="sm" onclick={saveAttendance}>Salvar</Button>
+								</div>
+							{:else}
+								<button onclick={() => startEditAttendance(a)} class="flex w-full items-center justify-between px-4 py-3 text-left transition-colors active:bg-muted">
+									<div class="text-sm">
+										<span class="font-medium">{getDayName(a.date)}</span>
+										<span class="text-muted-foreground"> {formatDate(a.date)}</span>
+										{#if a.check_in || a.check_out}
+											<span class="ml-1 text-xs text-info">{a.check_in ?? '?'}–{a.check_out ?? '?'}</span>
+										{/if}
+									</div>
+									{#if shortfall > 0}
+										<span class="text-xs font-medium text-warning">{formatMinutes(shortfall)}</span>
+									{/if}
+								</button>
+							{/if}
+						{/each}
+					</div>
+				{/if}
+			</div>
+		{/if}
 
 		<!-- Calendar dashboard -->
 		<div class="mb-5">

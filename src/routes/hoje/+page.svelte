@@ -7,8 +7,9 @@
 	import { products } from '$lib/stores/products.svelte';
 	import { events } from '$lib/stores/events.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
+	import { fixedAttendance } from '$lib/stores/fixedAttendance.svelte';
 	import { formatCurrency, formatDate, getDayName, operatingDateISO } from '$lib/utils';
-	import { getHoursWorked, getEffectiveRate as getEffectiveRateForDay } from '$lib/shift';
+	import { getHoursWorked, getEffectiveRate as getEffectiveRateForDay, getShiftWindow } from '$lib/shift';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import Calendar from '@lucide/svelte/icons/calendar';
@@ -146,6 +147,17 @@
 		const checkIn = field === 'check_in' ? (value || null) : a.check_in;
 		const checkOut = field === 'check_out' ? (value || null) : a.check_out;
 		await schedule.updateAssignmentTimes(assignmentId, checkIn, checkOut);
+	}
+
+	// Ponto de colaborador fixo: registro de assiduidade, desacoplado de escala/pagamento
+	// (ver $lib/stores/fixedAttendance.svelte). Só existe janela de turno ter-dom.
+	const todayHasShift = $derived(getShiftWindow(new Date(todayStr + 'T12:00:00').getDay()) !== null);
+
+	async function setFixedTime(collabId: string, field: 'check_in' | 'check_out', value: string) {
+		const existing = fixedAttendance.getFor(collabId, todayStr);
+		const checkIn = field === 'check_in' ? (value || null) : (existing?.check_in ?? null);
+		const checkOut = field === 'check_out' ? (value || null) : (existing?.check_out ?? null);
+		await fixedAttendance.setTimes(collabId, todayStr, checkIn, checkOut);
 	}
 
 </script>
@@ -403,22 +415,44 @@
 					<span class="text-xs font-bold uppercase tracking-wider text-info">Equipe Fixa</span>
 					<span class="text-xs text-muted-foreground">Presentes todos os dias</span>
 				</div>
-				<div class="flex flex-wrap gap-2">
+				<div class="stagger space-y-2">
 					{#each allFixed as collab (collab.id)}
 						{@const consumed = consumption.totalByCollaborator(collab.id, (pid) => products.getPrice(pid))}
-						<div class="flex items-center gap-2 rounded-xl bg-card/60 px-3 py-2">
-							<span class="flex h-7 w-7 items-center justify-center rounded-full bg-info/20 text-xs font-bold text-info">
-								{collab.name.slice(0, 2).toUpperCase()}
-							</span>
-							<div>
-								<span class="text-sm font-medium">{collab.name}</span>
-								{#if consumed > 0}
-									<span class="ml-1 text-xs text-primary">{formatCurrency(consumed)}</span>
-								{/if}
+						{@const attendance = fixedAttendance.getFor(collab.id, todayStr)}
+						<div class="rounded-xl bg-card/60 px-3 py-2">
+							<div class="flex items-center gap-2">
+								<span class="flex h-7 w-7 items-center justify-center rounded-full bg-info/20 text-xs font-bold text-info">
+									{collab.name.slice(0, 2).toUpperCase()}
+								</span>
+								<div class="flex-1">
+									<span class="text-sm font-medium">{collab.name}</span>
+									{#if consumed > 0}
+										<span class="ml-1 text-xs text-primary">{formatCurrency(consumed)}</span>
+									{/if}
+								</div>
+								<a href="/consumo?person={collab.id}" class="rounded p-1 text-info/60 transition-all active:scale-90 hover:text-info" aria-label="Anotar consumo">
+									<Plus class="h-3.5 w-3.5" strokeWidth={2.5} />
+								</a>
 							</div>
-							<a href="/consumo?person={collab.id}" class="rounded p-1 text-info/60 transition-all active:scale-90 hover:text-info" aria-label="Anotar consumo">
-								<Plus class="h-3.5 w-3.5" strokeWidth={2.5} />
-							</a>
+							{#if todayHasShift}
+								<!-- Ponto (só assiduidade — não afeta pagamento, que é valor fixo à parte) -->
+								<div class="mt-2 flex items-center gap-2 border-t border-info/15 pt-2">
+									<span class="text-[10px] text-muted-foreground">Entrada</span>
+									<input
+										type="time"
+										value={attendance?.check_in ?? ''}
+										onchange={(e) => setFixedTime(collab.id, 'check_in', e.currentTarget.value)}
+										class="w-[5.5rem] rounded-lg bg-muted px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-info/50"
+									/>
+									<span class="text-[10px] text-muted-foreground">Saída</span>
+									<input
+										type="time"
+										value={attendance?.check_out ?? ''}
+										onchange={(e) => setFixedTime(collab.id, 'check_out', e.currentTarget.value)}
+										class="w-[5.5rem] rounded-lg bg-muted px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-info/50"
+									/>
+								</div>
+							{/if}
 						</div>
 					{/each}
 				</div>
