@@ -19,8 +19,13 @@
 
 	const collab = $derived(collaborators.getById(page.params.id!));
 
+	// Dias trabalhados em ordem cronológica (do mais antigo pro mais novo).
 	const assignments = $derived(
-		collab ? schedule.getPastAssignments(collab.id, todayISO()) : []
+		collab
+			? [...schedule.getPastAssignments(collab.id, todayISO())].sort((a, b) =>
+					(schedule.getDateById(a.date_id)?.date ?? '').localeCompare(schedule.getDateById(b.date_id)?.date ?? '')
+				)
+			: []
 	);
 
 	// Dias desmarcados ficam de fora deste pagamento (continuam pendentes).
